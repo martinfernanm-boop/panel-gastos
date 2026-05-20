@@ -444,7 +444,7 @@ function defaultState() {
   return {
     version: 1, bankName: "Banco Edwards", expenses: [], categoryHints: {},
     processedEmailIds: [], reviewQueue: [], categories: DEFAULT_CATEGORIES.slice(),
-    sync: { senders: ["enviodigital@bancoedwards.cl"], subjectKeywords: ["Cargo"], windowDays: 30, lastSyncAt: null },
+    sync: { senders: ["enviodigital@bancoedwards.cl", "serviciodetransferencias@bancochile.cl"], subjectKeywords: ["Cargo", "Transferencia a Terceros"], windowDays: 30, lastSyncAt: null },
     ui: { sort: { field: "date", dir: "desc" }, filters: { search: "", category: "", bank: "", source: "" }, month: ymKey(new Date()) },
     chat: { messages: [] }
   };
@@ -456,11 +456,19 @@ function loadState() {
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     const def = defaultState();
-    return Object.assign({}, def, parsed, {
+    const merged = Object.assign({}, def, parsed, {
       sync: Object.assign({}, def.sync, parsed.sync || {}),
       ui: Object.assign({}, def.ui, parsed.ui || {}, { filters: Object.assign({}, def.ui.filters, (parsed.ui && parsed.ui.filters) || {}), sort: Object.assign({}, def.ui.sort, (parsed.ui && parsed.ui.sort) || {}) }),
       chat: Object.assign({}, def.chat, parsed.chat || {})
     });
+    // Migration v2: add transfer sender + keyword if user has only old single defaults (no customization)
+    if (Array.isArray(merged.sync.senders) && merged.sync.senders.length === 1 && merged.sync.senders[0] === "enviodigital@bancoedwards.cl") {
+      merged.sync.senders.push("serviciodetransferencias@bancochile.cl");
+    }
+    if (Array.isArray(merged.sync.subjectKeywords) && merged.sync.subjectKeywords.length === 1 && merged.sync.subjectKeywords[0] === "Cargo") {
+      merged.sync.subjectKeywords.push("Transferencia a Terceros");
+    }
+    return merged;
   } catch (e) { return defaultState(); }
 }
 function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
@@ -610,17 +618,19 @@ async function gmailSearchMessages(query, maxResults) {
   const list = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?q=" + encodeURIComponent(query) + "&maxResults=" + (maxResults || 50));
   const ids = (list.messages || []).map(m => m.id);
   const msgs = [];
-  // Fetch in series of 5 to avoid rate limits
+  // Fetch in series of 5 to avoid rate limits — format=full so we can extract body for emails where snippet is insufficient
   for (let i = 0; i < ids.length; i += 5) {
     const batch = ids.slice(i, i+5);
     const fetched = await Promise.all(batch.map(async id => {
       try {
-        const m = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + id + "?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date");
+        const m = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + id + "?format=full");
         const headers = (m.payload && m.payload.headers) || [];
         const h = name => (headers.find(h => h.name.toLowerCase() === name.toLowerCase()) || {}).value || "";
+        const bodyText = extractBodyText(m.payload);
         return {
           id: m.id,
           snippet: m.snippet || "",
+          bodyText: (bodyText || "").slice(0, 4000),
           subject: h("Subject"),
           sender: h("From"),
           date: h("Date") || (m.internalDate ? new Date(parseInt(m.internalDate, 10)).toISOString() : ""),
@@ -657,19 +667,27 @@ function emailExtractionPrompt(candidates, bankName) {
   let hintsJson = JSON.stringify(Object.fromEntries(hintEntries));
   if (hintsJson.length > 4000) hintsJson = hintsJson.slice(0, 4000) + '..."}';
   return [
-    "Eres un asistente experto en transacciones bancarias chilenas. Recibes correos de notificación de " + bankName + " y extraes los GASTOS (cargos / compras / pagos / transferencias salientes).",
+    "Eres un asistente experto en transacciones bancarias chilenas. Recibes correos de notificación de bancos y extraes los GASTOS (cargos / compras / pagos / transferencias salientes).",
     "Categorías permitidas: " + JSON.stringify(state.categories) + ".",
     "Pistas aprendidas (descripción → categoría): " + hintsJson + ".",
     "",
+    "TIPOS DE CORREO QUE EXTRAES:",
+    "1. CARGO / COMPRA con tarjeta: 'compra por $X con cargo a Cuenta ****YYYY en COMERCIO el DD/MM/YYYY'",
+    "   → description = COMERCIO en mayúsculas como aparece.",
+    "2. TRANSFERENCIA A TERCEROS (saliente, ES GASTO): 'Comprobante de Transferencia a terceros... Destino: Nombre Apellido... Monto: $X'",
+    "   → description = nombre del destinatario, ej: 'IGNACIO MANZANARES BANCHERO'",
+    "   → category sugerida: 'Transferencias' a menos que la pista aprendida diga otra.",
+    "",
     "REGLAS:",
-    "- IGNORA cartolas, estados de cuenta, abonos recibidos, transferencias entrantes, promociones, alertas sin monto.",
+    "- IGNORA cartolas, estados de cuenta, abonos RECIBIDOS, 'transferencia de fondos a tu cuenta' (entrante), promociones, marketing, alertas sin monto.",
     "- Monto chileno: punto separador de miles, sin decimales (\"$26.990\" = 26990 CLP).",
-    "- Fecha DD/MM/YYYY → YYYY-MM-DD.",
-    "- description = comercio en mayúsculas como aparece. Sin \"Pago:\" / \"Compra:\" al inicio.",
-    "- account_last4 = los 4 dígitos tras \"Cuenta ****\" si están.",
+    "- Fecha DD/MM/YYYY → YYYY-MM-DD. Si solo aparece 'martes 19 de mayo de 2026' conviértela a 2026-05-19.",
+    "- description SIN prefijos ('Pago:'/'Compra:'/'Transferencia:'). En MAYÚSCULAS.",
+    "- account_last4 = los 4 dígitos tras 'Cuenta ****' si están.",
+    "- bank = banco emisor (Banco Edwards, Banco de Chile, etc.) según el contenido del correo.",
     "- category: si NO estás seguro, déjala null.",
     "",
-    "CORREOS:",
+    "CORREOS (subject + body):",
     JSON.stringify(candidates),
     "",
     'Devuelve SOLO array JSON, sin markdown:',
@@ -708,7 +726,64 @@ function buildGmailQuery() {
   if (!senders.length) return null;
   const fromExpr = senders.length === 1 ? "from:" + senders[0] : "from:(" + senders.join(" OR ") + ")";
   const win = Math.max(1, state.sync.windowDays || 30);
-  return fromExpr + " newer_than:" + win + "d -in:trash -in:spam";
+  // in:anywhere para incluir trash (algunos bancos los mandan ahí)
+  return fromExpr + " newer_than:" + win + "d in:anywhere -in:spam";
+}
+
+// Decode base64url to UTF-8 string
+function decodeBase64Url(s) {
+  if (!s) return "";
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  try {
+    const bin = atob(b64);
+    // bin is binary string; decode as UTF-8
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  } catch (e) {
+    return "";
+  }
+}
+
+// Strip HTML tags, decode common entities, collapse whitespace
+function stripHtml(html) {
+  let t = String(html);
+  t = t.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ");
+  t = t.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ");
+  t = t.replace(/<\/?(p|br|tr|div|h[1-6]|li|td)[^>]*>/gi, "\n");
+  t = t.replace(/<[^>]+>/g, " ");
+  // Common HTML entities
+  const ents = { "nbsp":" ", "amp":"&", "lt":"<", "gt":">", "quot":'"', "apos":"'",
+    "aacute":"á","eacute":"é","iacute":"í","oacute":"ó","uacute":"ú","ntilde":"ñ",
+    "Aacute":"Á","Eacute":"É","Iacute":"Í","Oacute":"Ó","Uacute":"Ú","Ntilde":"Ñ",
+    "ordm":"º","ordf":"ª","bull":"•","mdash":"—","ndash":"–","hellip":"…","copy":"©","reg":"®" };
+  t = t.replace(/&([a-zA-Z]+);/g, (m, name) => ents[name] != null ? ents[name] : m);
+  t = t.replace(/&#(\d+);/g, (m, n) => String.fromCharCode(parseInt(n, 10)));
+  t = t.replace(/[ \t]+/g, " ").replace(/\n[ \t]+/g, "\n").replace(/\n{2,}/g, "\n");
+  return t.trim();
+}
+
+// Recursively find text body in a Gmail message payload
+function extractBodyText(payload) {
+  if (!payload) return "";
+  const mime = payload.mimeType || "";
+  if (payload.body && payload.body.data) {
+    const text = decodeBase64Url(payload.body.data);
+    if (mime === "text/html") return stripHtml(text);
+    return text;
+  }
+  if (Array.isArray(payload.parts)) {
+    const plain = payload.parts.find(p => p.mimeType === "text/plain");
+    if (plain && plain.body && plain.body.data) return decodeBase64Url(plain.body.data);
+    const html = payload.parts.find(p => p.mimeType === "text/html");
+    if (html && html.body && html.body.data) return stripHtml(decodeBase64Url(html.body.data));
+    // Recurse into nested parts
+    for (const p of payload.parts) {
+      const inner = extractBodyText(p);
+      if (inner) return inner;
+    }
+  }
+  return "";
 }
 function toastSync(kind, msg) {
   const el = document.getElementById("sync-toast");
@@ -737,7 +812,7 @@ async function runSync() {
       const subj = String(m.subject || "").toLowerCase();
       if (keywords.length && !keywords.some(k => subj.indexOf(k) >= 0)) return false;
       return true;
-    }).map(m => ({ email_id: m.id, subject: m.subject || "", body: m.snippet || "", date: m.date || "" }));
+    }).map(m => ({ email_id: m.id, subject: m.subject || "", body: (m.bodyText && m.bodyText.length > 50) ? m.bodyText : (m.snippet || ""), date: m.date || "" }));
 
     if (!candidates.length) {
       state.sync.lastSyncAt = new Date().toISOString();
