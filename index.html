@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Panel de Gastos</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --border: #e4e7ec;
+  --border-strong: #d0d5dd;
+  --text: #101828;
+  --text-muted: #475467;
+  --text-soft: #667085;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --success: #16a34a;
+  --success-soft: #ecfdf5;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --warning-strong: #fef3c7;
+  --chip-bg: #f2f4f7;
+  --chat-user: #2563eb;
+  --chat-user-text: #ffffff;
+  --chat-bot: #f2f4f7;
+  --chat-bot-text: #101828;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow: 0 4px 12px rgba(16, 24, 40, 0.06);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+.app { max-width: 1280px; margin: 0 auto; padding: 16px 18px 64px; display: flex; flex-direction: column; gap: 18px; }
+.header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.header h1 { font-size: 22px; font-weight: 600; margin: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: var(--chip-bg); font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.chip.connected { background: var(--success-soft); color: #14532d; cursor: pointer; }
+.chip.disconnected { background: var(--danger-soft); color: #7f1d1d; cursor: pointer; }
+.header-stats { margin-left: auto; display: flex; gap: 18px; }
+.header-stats .ks { font-size: 12px; color: var(--text-muted); }
+.header-stats .kv { font-size: 18px; font-weight: 600; color: var(--text); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }
+.card details > summary { cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 14px; user-select: none; list-style: none; display: flex; align-items: center; gap: 10px; }
+.card details > summary::-webkit-details-marker { display: none; }
+.card details > summary::before { content: "▸"; color: var(--text-soft); font-size: 11px; transition: transform .15s; display: inline-block; width: 10px; }
+.card details[open] > summary::before { transform: rotate(90deg); }
+.card details > summary .summary-hint { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--text-soft); }
+.card-body { padding: 4px 16px 16px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer; transition: background .12s; font-family: var(--font); }
+.btn:hover { background: var(--surface-2); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.btn.danger { color: var(--danger); }
+.btn.danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--text-muted); padding: 6px 10px; }
+.btn.ghost:hover { background: var(--surface-2); color: var(--text); }
+.btn.lg { padding: 10px 18px; font-size: 14px; }
+.btn.icon { padding: 6px; width: 30px; height: 30px; justify-content: center; }
+input[type=text], input[type=number], input[type=month], input[type=search], input[type=password], select, textarea {
+  width: 100%; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); font-size: 13px; font-family: var(--font); color: var(--text);
+}
+textarea { resize: vertical; min-height: 70px; line-height: 1.4; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: var(--primary); }
+label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+.sync-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sync-info { font-size: 13px; color: var(--text-muted); }
+.sync-settings { display: none; margin-top: 12px; padding: 12px; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--border); gap: 12px; }
+.sync-settings.open { display: grid; grid-template-columns: 1fr 1fr; }
+.sync-settings .full { grid-column: 1 / -1; }
+.sync-toast { padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px; margin-top: 12px; display: none; }
+.sync-toast.show { display: block; }
+.sync-toast.success { background: var(--success-soft); color: #14532d; }
+.sync-toast.warn { background: var(--warning-soft); color: #78350f; }
+.sync-toast.error { background: var(--danger-soft); color: #7f1d1d; }
+.upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.upload-grid .full { grid-column: 1 / -1; }
+.review-section { border-left: 4px solid var(--warning); }
+.review-section .card-body { padding-top: 12px; }
+.review-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.review-list { display: flex; flex-direction: column; gap: 8px; }
+.review-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--warning-strong); background: var(--warning-soft); border-radius: var(--radius-sm); }
+.review-item .ri-desc { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-item .ri-amt { font-weight: 600; }
+.review-item .ri-date { font-size: 12px; color: var(--text-muted); width: 90px; }
+.review-item select { width: 180px; flex: 0 0 auto; }
+.dashboard { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(280px, 1fr); gap: 16px; }
+.dashboard-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow-sm); }
+.stat-card .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.stat-card .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+.stat-card .delta { font-size: 12px; margin-top: 6px; font-weight: 500; }
+.stat-card .delta.up { color: var(--danger); }
+.stat-card .delta.down { color: var(--success); }
+.stat-card .delta.flat { color: var(--text-muted); }
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 8px; }
+.chart-card .chart-head { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.chart-card .chart-head h3 { font-size: 13px; font-weight: 600; margin: 0; }
+.chart-card .chart-head input { width: 150px; }
+.chart-wrap { position: relative; height: 220px; }
+.chart-empty { text-align: center; color: var(--text-soft); padding: 40px 0; font-size: 13px; }
+.tc-grid { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+.table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; overflow: hidden; }
+.filters { padding: 12px 14px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; }
+.filters .filter-group label { margin-bottom: 3px; font-size: 11px; }
+.table-wrap { overflow-x: auto; }
+table.expenses { width: 100%; border-collapse: collapse; }
+table.expenses th, table.expenses td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+table.expenses th { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; cursor: pointer; user-select: none; background: var(--surface-2); position: sticky; top: 0; }
+table.expenses th .sort-ind { display: inline-block; width: 10px; color: var(--primary); }
+table.expenses td.amt { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+table.expenses tr:hover { background: var(--surface-2); }
+.tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--chip-bg); color: var(--text-muted); font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid transparent; }
+.tag.cat { background: var(--primary-soft); color: var(--primary); }
+.tag.cat.empty { background: var(--warning-soft); color: var(--warning); border: 1px dashed var(--warning); }
+.tag:hover { border-color: var(--primary); }
+.row-actions { display: flex; gap: 4px; }
+.row-actions button { padding: 4px 6px; background: transparent; border: none; cursor: pointer; color: var(--text-soft); font-size: 13px; border-radius: 4px; }
+.row-actions button:hover { background: var(--surface-2); color: var(--text); }
+.row-note { font-size: 12px; color: var(--text-soft); margin-top: 2px; font-style: italic; }
+.empty-table { text-align: center; padding: 40px 20px; color: var(--text-soft); font-size: 13px; }
+.table-footer { padding: 8px 14px; font-size: 12px; color: var(--text-soft); border-top: 1px solid var(--border); background: var(--surface-2); display: flex; justify-content: space-between; }
+.chat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; height: 640px; position: sticky; top: 12px; }
+.chat-head { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.chat-head h3 { margin: 0; font-size: 14px; font-weight: 600; flex: 1; display: flex; align-items: center; gap: 6px; }
+.chat-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; }
+.chat-head .dot.off { background: var(--text-soft); }
+.chat-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.bubble { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.45; }
+.bubble.user { align-self: flex-end; background: var(--chat-user); color: var(--chat-user-text); border-bottom-right-radius: 4px; }
+.bubble.bot { align-self: flex-start; background: var(--chat-bot); color: var(--chat-bot-text); border-bottom-left-radius: 4px; }
+.bubble.error { background: var(--danger-soft); color: #7f1d1d; }
+.chat-empty { color: var(--text-soft); text-align: center; padding: 12px 8px; }
+.chat-empty p { margin: 0 0 12px; font-size: 13px; }
+.chat-suggestions { display: flex; flex-direction: column; gap: 6px; }
+.chat-suggestion { padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; text-align: left; color: var(--text); }
+.chat-suggestion:hover { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+.typing { display: inline-flex; gap: 3px; align-items: center; }
+.typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-soft); animation: bounce 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bounce { 0%,80%,100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.chat-input-row { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; }
+.chat-input-row textarea { min-height: 34px; max-height: 140px; resize: none; }
+.modal-bg { position: fixed; inset: 0; background: rgba(16,24,40,0.55); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+.modal-bg.open { display: flex; }
+.modal { background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 520px; padding: 22px; box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; }
+.modal h2 { margin: 0 0 4px; font-size: 18px; }
+.modal h3 { margin: 0 0 12px; font-size: 15px; }
+.modal p { margin: 0 0 14px; color: var(--text-muted); font-size: 13px; }
+.modal .field { margin-bottom: 14px; }
+.modal .field label { font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.modal .field .hint { font-size: 12px; color: var(--text-soft); margin-top: 4px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.settings-grid .full { grid-column: 1 / -1; }
+.cat-editor { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--primary-soft); color: var(--primary); border-radius: 999px; font-size: 12px; }
+.cat-pill button { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 14px; padding: 0; line-height: 1; }
+.cat-add-row { display: flex; gap: 6px; margin-top: 8px; }
+.hidden { display: none !important; }
+.muted { color: var(--text-muted); }
+.sub { font-size: 12px; color: var(--text-muted); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.status-bar { display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--text-muted); }
+.status-bar .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-bar .dot.ok { background: var(--success); }
+.status-bar .dot.err { background: var(--danger); }
+@media (max-width: 1020px) {
+  .tc-grid { grid-template-columns: 1fr; }
+  .chat-card { height: 520px; position: relative; top: 0; }
+}
+@media (max-width: 820px) {
+  .dashboard { grid-template-columns: 1fr; }
+  .dashboard-stats { grid-template-columns: 1fr; }
+  .filters { grid-template-columns: 1fr 1fr; }
+  .upload-grid, .sync-settings.open, .settings-grid { grid-template-columns: 1fr; }
+  .review-item { flex-wrap: wrap; }
+  .review-item .ri-desc { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="header">
+    <h1>Mi Panel de Gastos</h1>
+    <span class="chip">Chile · CLP</span>
+    <span class="chip disconnected" id="gmail-chip" title="Configurar credenciales">⚙️ Configurar</span>
+    <div class="header-stats">
+      <div><div class="ks">Total del mes</div><div class="kv" id="hs-total">$0</div></div>
+      <div><div class="ks">Movimientos</div><div class="kv" id="hs-count">0</div></div>
+    </div>
+  </header>
+
+  <section class="card" id="sync-card">
+    <details open>
+      <summary>Sincronizar correo <span class="summary-hint" id="sync-last-hint">—</span></summary>
+      <div class="card-body">
+        <div class="sync-row">
+          <button id="btn-sync" class="btn primary lg">Sincronizar ahora</button>
+          <div class="sync-info" id="sync-info">Configura tus credenciales primero (botón ⚙️ arriba).</div>
+          <button id="btn-sync-settings" class="btn ghost">⚙️ Ajustes</button>
+        </div>
+        <div class="sync-settings" id="sync-settings">
+          <div class="full">
+            <label>Remitentes del banco (uno por línea)</label>
+            <textarea id="cfg-senders" rows="3"></textarea>
+          </div>
+          <div>
+            <label>Keywords del asunto (separadas por coma)</label>
+            <input type="text" id="cfg-keywords">
+          </div>
+          <div>
+            <label>Ventana en días (1-180)</label>
+            <input type="number" id="cfg-window" min="1" max="180">
+          </div>
+          <div class="full">
+            <button class="btn primary" id="btn-save-sync-settings">Guardar ajustes</button>
+            <button class="btn danger" id="btn-reprocess">↻ Re-procesar correos antiguos</button>
+          </div>
+        </div>
+        <div class="sync-toast" id="sync-toast"></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Subir cartola manualmente <span class="summary-hint">CSV, TXT o pegar texto</span></summary>
+      <div class="card-body">
+        <div class="upload-grid">
+          <div>
+            <label>Banco</label>
+            <select id="upload-bank"></select>
+          </div>
+          <div>
+            <label>Archivo (.csv, .txt)</label>
+            <input type="file" id="upload-file" accept=".csv,.txt,.tsv,text/plain,text/csv">
+          </div>
+          <div class="full">
+            <label>O pega el texto de tu cartola</label>
+            <textarea id="upload-text" rows="6" placeholder="Pega aquí los movimientos de tu cartola..."></textarea>
+          </div>
+          <div class="full">
+            <button id="btn-upload-process" class="btn primary lg">Procesar con Claude</button>
+            <span id="upload-status" class="sub" style="margin-left:10px"></span>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card review-section hidden" id="review-card">
+    <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
+      <strong>Cola de revisión</strong>
+      <span class="chip" id="review-count">0</span>
+      <span class="sub">Revisa categorías antes de aceptar.</span>
+    </div>
+    <div class="card-body">
+      <div class="review-actions">
+        <button class="btn primary" id="btn-accept-with-cat">✓ Aceptar todos con categoría</button>
+        <button class="btn" id="btn-auto-cat">✨ Auto-categorizar con Claude</button>
+        <button class="btn ghost" id="btn-select-all">Seleccionar todos</button>
+        <button class="btn" id="btn-accept-selected">✓ Aceptar seleccionados</button>
+        <button class="btn danger" id="btn-discard-selected">Descartar seleccionados</button>
+        <button class="btn danger" id="btn-discard-all">Descartar todos</button>
+      </div>
+      <div class="review-list" id="review-list"></div>
+    </div>
+  </section>
+
+  <section class="dashboard">
+    <div class="dashboard-stats">
+      <div class="stat-card"><div class="label">Total del mes</div><div class="value" id="stat-total">$0</div><div class="delta" id="stat-delta">—</div></div>
+      <div class="stat-card"><div class="label">Mes anterior</div><div class="value" id="stat-prev">$0</div><div class="delta flat" id="stat-prev-sub">—</div></div>
+      <div class="stat-card"><div class="label">Promedio diario</div><div class="value" id="stat-avg">$0</div><div class="delta flat" id="stat-avg-sub">—</div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head"><h3>Gastos por categoría</h3><input type="month" id="month-picker"></div>
+      <div class="chart-wrap"><canvas id="cat-chart"></canvas><div id="chart-empty" class="chart-empty hidden">Sin gastos en este mes.</div></div>
+    </div>
+  </section>
+
+  <section class="tc-grid">
+    <div class="table-card">
+      <div class="filters">
+        <div class="filter-group"><label>Buscar</label><input type="search" id="f-search" placeholder="Buscar comercio, nota..."></div>
+        <div class="filter-group"><label>Categoría</label><select id="f-category"><option value="">Todas</option></select></div>
+        <div class="filter-group"><label>Banco</label><select id="f-bank"><option value="">Todos</option></select></div>
+        <div class="filter-group"><label>Fuente</label><select id="f-source"><option value="">Todas</option><option value="gmail">Correo</option><option value="upload">Cartola</option></select></div>
+        <button class="btn ghost" id="btn-clear-filters">Limpiar</button>
+      </div>
+      <div class="table-wrap">
+        <table class="expenses">
+          <thead><tr>
+            <th data-sort="date">Fecha <span class="sort-ind" id="si-date"></span></th>
+            <th data-sort="description">Descripción <span class="sort-ind" id="si-description"></span></th>
+            <th data-sort="category">Categoría <span class="sort-ind" id="si-category"></span></th>
+            <th data-sort="bank">Banco <span class="sort-ind" id="si-bank"></span></th>
+            <th data-sort="source">Fuente <span class="sort-ind" id="si-source"></span></th>
+            <th data-sort="amount" style="text-align:right">Monto <span class="sort-ind" id="si-amount"></span></th>
+            <th></th>
+          </tr></thead>
+          <tbody id="expenses-body"></tbody>
+        </table>
+        <div class="empty-table hidden" id="empty-table">Aún no hay gastos. Configura credenciales y sincroniza.</div>
+      </div>
+      <div class="table-footer">
+        <span id="table-info">0 gastos</span>
+        <span id="table-total">Total filtrado: $0</span>
+      </div>
+    </div>
+
+    <aside class="chat-card">
+      <div class="chat-head">
+        <h3><span class="dot off" id="chat-dot"></span> Pregúntale a Claude</h3>
+        <button class="btn ghost icon" id="btn-chat-clear" title="Borrar conversación">🗑️</button>
+      </div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" rows="1" placeholder="Pregunta algo sobre tus gastos..."></textarea>
+        <button class="btn primary" id="btn-chat-send">Enviar</button>
+      </div>
+    </aside>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Configuración y datos</summary>
+      <div class="card-body">
+        <div class="settings-grid">
+          <div>
+            <label>Credenciales</label>
+            <div class="row"><button class="btn primary" id="btn-open-creds">⚙️ Configurar API key y Gmail</button></div>
+            <div class="sub" style="margin-top:6px">Tu API key de Gemini y conexión con Gmail.</div>
+          </div>
+          <div>
+            <label>Respaldo</label>
+            <div class="row">
+              <button class="btn" id="btn-export">Exportar JSON</button>
+              <label class="btn" style="margin:0; cursor:pointer">Importar JSON<input type="file" id="import-file" accept="application/json,.json" style="display:none"></label>
+            </div>
+          </div>
+          <div>
+            <label>Reset</label>
+            <div class="row"><button class="btn danger" id="btn-reset">Borrar todos los datos</button></div>
+            <div class="sub" style="margin-top:6px">Borra gastos, cola de revisión, chat, IDs procesados. No borra credenciales.</div>
+          </div>
+          <div class="full">
+            <label>Categorías</label>
+            <div class="cat-editor" id="cat-editor"></div>
+            <div class="cat-add-row"><input type="text" id="cat-new" placeholder="Nueva categoría"><button class="btn primary" id="btn-cat-add">Agregar</button></div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <footer class="status-bar" id="status-bar"></footer>
+</div>
+
+<!-- Credentials setup modal -->
+<div class="modal-bg" id="modal-creds">
+  <div class="modal">
+    <h2>Configura tus credenciales</h2>
+    <p>Este panel se conecta directamente con Gmail (tu correo) y Gemini (IA de Google). Necesita dos cosas, configúralas una sola vez. Todo queda guardado solo en este navegador (<code>localStorage</code>), nunca se envía a otro servidor.</p>
+
+    <div class="field">
+      <label>1. API key de Gemini <span class="sub">(Google AI, gratis)</span></label>
+      <input type="password" id="cred-anthropic" placeholder="AIza...">
+      <div class="hint">Obtén una gratis en <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>. No requiere tarjeta. Login con tu Gmail. Free tier: 1500 llamadas/día.</div>
+    </div>
+
+    <div class="field">
+      <label>2. Google OAuth Client ID <span class="sub">(Gmail)</span></label>
+      <input type="text" id="cred-google" placeholder="123456-abc.apps.googleusercontent.com">
+      <div class="hint">Créalo gratis en Google Cloud Console. La guía completa está en el archivo SETUP.md del repo.</div>
+    </div>
+
+    <div class="field">
+      <label>3. Conexión con Gmail</label>
+      <div class="row">
+        <button class="btn primary" id="btn-connect-gmail">Conectar Gmail</button>
+        <span id="gmail-status" class="sub">No conectado</span>
+      </div>
+      <div class="hint">Solo lectura. Pide permiso a Google una vez; el token vive 1 hora y se renueva solo.</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" id="btn-creds-close">Cerrar</button>
+      <button class="btn primary" id="btn-creds-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: edit category -->
+<div class="modal-bg" id="modal-cat">
+  <div class="modal" style="max-width:420px">
+    <h3>Cambiar categoría</h3>
+    <div class="sub" id="modal-cat-desc"></div>
+    <div style="margin-top:10px"><label>Categoría</label><select id="modal-cat-select" autofocus></select></div>
+    <div class="modal-actions"><button class="btn" id="modal-cat-cancel">Cancelar</button><button class="btn primary" id="modal-cat-save">Guardar</button></div>
+  </div>
+</div>
+
+<!-- Modal: edit note -->
+<div class="modal-bg" id="modal-note">
+  <div class="modal" style="max-width:420px">
+    <h3>Nota del gasto</h3>
+    <div class="sub" id="modal-note-desc"></div>
+    <div style="margin-top:10px"><label>Nota libre <span class="sub">(⌘/Ctrl+Enter guarda)</span></label><textarea id="modal-note-text" rows="4"></textarea></div>
+    <div class="modal-actions"><button class="btn danger" id="modal-note-clear">Borrar nota</button><button class="btn" id="modal-note-cancel">Cancelar</button><button class="btn primary" id="modal-note-save">Guardar</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" crossorigin="anonymous"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+"use strict";
+
+// ============================================================
+// Constants + state
+// ============================================================
+const STORAGE_KEY = "panel_gastos_state_v1";
+const CREDS_KEY = "panel_gastos_creds_v1";
+const GEMINI_MODEL = "gemini-2.0-flash";
+const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+const DEFAULT_CATEGORIES = [
+  "Supermercado","Restaurantes y delivery","Transporte","Servicios básicos","Salud",
+  "Entretenimiento","Suscripciones","Vestuario","Hogar","Educación","Transferencias","Otros"
+];
+const BANK_PRESETS = ["Banco Edwards","Banco de Chile","Santander","BCI","Itaú","BancoEstado","Falabella","Security","BICE","Otro"];
+
+function defaultState() {
+  return {
+    version: 1, bankName: "Banco Edwards", expenses: [], categoryHints: {},
+    processedEmailIds: [], reviewQueue: [], categories: DEFAULT_CATEGORIES.slice(),
+    sync: { senders: ["enviodigital@bancoedwards.cl"], subjectKeywords: ["Cargo"], windowDays: 30, lastSyncAt: null },
+    ui: { sort: { field: "date", dir: "desc" }, filters: { search: "", category: "", bank: "", source: "" }, month: ymKey(new Date()) },
+    chat: { messages: [] }
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const def = defaultState();
+    return Object.assign({}, def, parsed, {
+      sync: Object.assign({}, def.sync, parsed.sync || {}),
+      ui: Object.assign({}, def.ui, parsed.ui || {}, { filters: Object.assign({}, def.ui.filters, (parsed.ui && parsed.ui.filters) || {}), sort: Object.assign({}, def.ui.sort, (parsed.ui && parsed.ui.sort) || {}) }),
+      chat: Object.assign({}, def.chat, parsed.chat || {})
+    });
+  } catch (e) { return defaultState(); }
+}
+function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
+
+function loadCreds() { try { return JSON.parse(localStorage.getItem(CREDS_KEY)) || {}; } catch { return {}; } }
+function saveCreds() { localStorage.setItem(CREDS_KEY, JSON.stringify(creds)); }
+
+let state = loadState();
+let creds = loadCreds();
+let tokenClient = null;
+let chatInFlight = false, syncInFlight = false, categorizeInFlight = false;
+let catChart = null;
+const selectedReview = new Set();
+let editingExpenseId = null, noteEditingId = null;
+
+// ============================================================
+// Helpers
+// ============================================================
+function getResponseText(result) {
+  if (result == null) return "";
+  if (typeof result === "string") return result;
+  // Gemini format
+  if (result.candidates && result.candidates[0] && result.candidates[0].content && Array.isArray(result.candidates[0].content.parts)) {
+    return result.candidates[0].content.parts.map(p => p.text || "").join("\n").trim();
+  }
+  // Anthropic format (fallback)
+  if (Array.isArray(result.content)) return result.content.filter(b => b.type === "text" || typeof b.text === "string").map(b => b.text || "").join("\n").trim();
+  if (typeof result.text === "string") return result.text;
+  return JSON.stringify(result);
+}
+function parseJsonFromText(text) {
+  if (!text) return null;
+  let t = String(text).trim().replace(/^\s*```(?:json)?\s*\n?/i, "").replace(/\n?\s*```\s*$/, "").trim();
+  try { return JSON.parse(t); } catch (_) {}
+  const fa = t.indexOf("["), la = t.lastIndexOf("]");
+  if (fa >= 0 && la > fa) { try { return JSON.parse(t.slice(fa, la + 1)); } catch (_) {} }
+  const fo = t.indexOf("{"), lo = t.lastIndexOf("}");
+  if (fo >= 0 && lo > fo) { try { return JSON.parse(t.slice(fo, lo + 1)); } catch (_) {} }
+  return null;
+}
+function normalizeDate(s) {
+  if (!s) return null;
+  const str = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+  const m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + "-" + m[2].padStart(2,"0") + "-" + m[1].padStart(2,"0");
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  return null;
+}
+function parseAmount(s) {
+  if (s == null) return null;
+  if (typeof s === "number") return Math.round(s);
+  let t = String(s).replace(/[$\sCLP]/gi, "").trim();
+  if (!t) return null;
+  let sign = 1;
+  if (/^-/.test(t)) { sign = -1; t = t.slice(1); }
+  if (/^\(.*\)$/.test(t)) { sign = -1; t = t.slice(1, -1); }
+  if (/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(t)) return sign * Math.round(parseFloat(t.replace(/,/g, "")));
+  if (/^\d{1,3}(\.\d{3})+$/.test(t)) return sign * parseInt(t.replace(/\./g, ""), 10);
+  if (/^\d+$/.test(t)) return sign * parseInt(t, 10);
+  if (/^\d+,\d{1,2}$/.test(t)) return sign * Math.round(parseFloat(t.replace(",", ".")));
+  return null;
+}
+const CLPfmt = new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 });
+function fmtCLP(n) { if (n == null || isNaN(n)) return "$0"; return CLPfmt.format(Math.round(n)); }
+function ymKey(d) { const dd = (d instanceof Date) ? d : new Date(d); return dd.getFullYear() + "-" + String(dd.getMonth()+1).padStart(2,"0"); }
+function dedupeKey(e) { return (e.date || "") + "|" + (e.amount || 0) + "|" + String(e.description || "").trim().toLowerCase() + "|" + (e.bank || ""); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function isValidExpense(e) { return e && typeof e.amount === "number" && e.amount > 0 && typeof e.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && typeof e.description === "string" && e.description.trim().length > 0; }
+function relTime(iso) { if (!iso) return "nunca"; const t = new Date(iso).getTime(); if (isNaN(t)) return "—"; const diff = (Date.now() - t) / 1000; if (diff < 60) return "hace " + Math.floor(diff) + "s"; if (diff < 3600) return "hace " + Math.floor(diff/60) + " min"; if (diff < 86400) return "hace " + Math.floor(diff/3600) + " h"; return "hace " + Math.floor(diff/86400) + " días"; }
+function escapeHtml(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]); }
+
+// ============================================================
+// Gemini API (direct from browser, free tier)
+// ============================================================
+async function askClaude(prompt) {
+  if (!creds.geminiKey) throw new Error("Falta API key de Gemini");
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-goog-api-key": creds.geminiKey
+    },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 8192, temperature: 0.2 }
+    })
+  });
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error("Gemini API " + resp.status + ": " + txt.slice(0, 300));
+  }
+  return await resp.json();
+}
+
+// ============================================================
+// Google OAuth + Gmail API
+// ============================================================
+function initGoogleClient() {
+  if (!creds.googleClientId) return;
+  if (!window.google || !window.google.accounts) {
+    setTimeout(initGoogleClient, 500);
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: creds.googleClientId,
+    scope: GMAIL_SCOPE,
+    callback: () => {} // overwritten per-request
+  });
+}
+
+function gmailTokenValid() {
+  return creds.gmailAccessToken && creds.gmailTokenExpiry && Date.now() < creds.gmailTokenExpiry - 30000;
+}
+
+function requestGmailToken(promptMode) {
+  return new Promise((resolve, reject) => {
+    if (!tokenClient) { initGoogleClient(); }
+    if (!tokenClient) return reject(new Error("Google Identity no inicializado"));
+    tokenClient.callback = (resp) => {
+      if (resp.error) return reject(new Error("OAuth: " + resp.error));
+      creds.gmailAccessToken = resp.access_token;
+      creds.gmailTokenExpiry = Date.now() + (parseInt(resp.expires_in, 10) || 3600) * 1000;
+      saveCreds();
+      updateGmailStatus();
+      resolve(resp.access_token);
+    };
+    try { tokenClient.requestAccessToken({ prompt: promptMode || "" }); }
+    catch (e) { reject(e); }
+  });
+}
+
+async function gmailFetch(url) {
+  if (!gmailTokenValid()) await requestGmailToken("");
+  let r = await fetch(url, { headers: { Authorization: "Bearer " + creds.gmailAccessToken } });
+  if (r.status === 401) {
+    await requestGmailToken("");
+    r = await fetch(url, { headers: { Authorization: "Bearer " + creds.gmailAccessToken } });
+  }
+  if (!r.ok) throw new Error("Gmail " + r.status + ": " + (await r.text()).slice(0, 200));
+  return r.json();
+}
+
+async function gmailSearchMessages(query, maxResults) {
+  const list = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?q=" + encodeURIComponent(query) + "&maxResults=" + (maxResults || 50));
+  const ids = (list.messages || []).map(m => m.id);
+  const msgs = [];
+  // Fetch in series of 5 to avoid rate limits
+  for (let i = 0; i < ids.length; i += 5) {
+    const batch = ids.slice(i, i+5);
+    const fetched = await Promise.all(batch.map(async id => {
+      try {
+        const m = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + id + "?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date");
+        const headers = (m.payload && m.payload.headers) || [];
+        const h = name => (headers.find(h => h.name.toLowerCase() === name.toLowerCase()) || {}).value || "";
+        return {
+          id: m.id,
+          snippet: m.snippet || "",
+          subject: h("Subject"),
+          sender: h("From"),
+          date: h("Date") || (m.internalDate ? new Date(parseInt(m.internalDate, 10)).toISOString() : ""),
+          labelIds: m.labelIds || []
+        };
+      } catch (e) { console.error("gmail fetch err", e); return null; }
+    }));
+    fetched.forEach(m => { if (m) msgs.push(m); });
+  }
+  return msgs;
+}
+
+function updateGmailStatus() {
+  const chip = document.getElementById("gmail-chip");
+  const status = document.getElementById("gmail-status");
+  const ready = !!(creds.geminiKey && creds.googleClientId && gmailTokenValid());
+  if (ready) { chip.className = "chip connected"; chip.textContent = "✓ Conectado"; }
+  else if (creds.geminiKey && creds.googleClientId) { chip.className = "chip disconnected"; chip.textContent = "⚠ Conectar Gmail"; }
+  else { chip.className = "chip disconnected"; chip.textContent = "⚙️ Configurar"; }
+  if (status) {
+    if (gmailTokenValid()) status.textContent = "✓ Conectado, expira " + relTime(new Date(creds.gmailTokenExpiry).toISOString()).replace("hace", "en");
+    else if (creds.gmailAccessToken) status.textContent = "Token expirado, reconecta";
+    else status.textContent = "No conectado";
+  }
+  const dot = document.getElementById("chat-dot");
+  if (dot) { if (creds.geminiKey) dot.classList.remove("off"); else dot.classList.add("off"); }
+}
+
+// ============================================================
+// LLM prompts
+// ============================================================
+function emailExtractionPrompt(candidates, bankName) {
+  const hintEntries = Object.entries(state.categoryHints).slice(0, 100);
+  let hintsJson = JSON.stringify(Object.fromEntries(hintEntries));
+  if (hintsJson.length > 4000) hintsJson = hintsJson.slice(0, 4000) + '..."}';
+  return [
+    "Eres un asistente experto en transacciones bancarias chilenas. Recibes correos de notificación de " + bankName + " y extraes los GASTOS (cargos / compras / pagos / transferencias salientes).",
+    "Categorías permitidas: " + JSON.stringify(state.categories) + ".",
+    "Pistas aprendidas (descripción → categoría): " + hintsJson + ".",
+    "",
+    "REGLAS:",
+    "- IGNORA cartolas, estados de cuenta, abonos recibidos, transferencias entrantes, promociones, alertas sin monto.",
+    "- Monto chileno: punto separador de miles, sin decimales (\"$26.990\" = 26990 CLP).",
+    "- Fecha DD/MM/YYYY → YYYY-MM-DD.",
+    "- description = comercio en mayúsculas como aparece. Sin \"Pago:\" / \"Compra:\" al inicio.",
+    "- account_last4 = los 4 dígitos tras \"Cuenta ****\" si están.",
+    "- category: si NO estás seguro, déjala null.",
+    "",
+    "CORREOS:",
+    JSON.stringify(candidates),
+    "",
+    'Devuelve SOLO array JSON, sin markdown:',
+    '[{"email_id":"...","date":"YYYY-MM-DD","amount":12345,"description":"...","account_last4":"...","bank":"...","category":null}]'
+  ].join("\n");
+}
+
+function statementParsePrompt(text, bankName) {
+  const hintEntries = Object.entries(state.categoryHints).slice(0, 100);
+  let hintsJson = JSON.stringify(Object.fromEntries(hintEntries));
+  if (hintsJson.length > 4000) hintsJson = hintsJson.slice(0, 4000) + '..."}';
+  return [
+    'Eres experto en cartolas bancarias chilenas. Extrae los GASTOS (cargos, compras, pagos — NUNCA abonos).',
+    'Banco: "' + bankName + '". Categorías permitidas: ' + JSON.stringify(state.categories) + '. Pistas: ' + hintsJson + '.',
+    "",
+    "REGLAS:",
+    '- Si hay "Cargos" y "Abonos", solo filas con Cargos > 0.',
+    '- IGNORA filas de header/metadata (saldo, RUT, totales).',
+    "- Formato de monto: \"2,811.00\" → 2811; \"$26.990\" o \"26.990\" → 26990.",
+    "- Fecha DD/MM/YYYY → YYYY-MM-DD.",
+    '- description SIN prefijos. category null si dudoso.',
+    "",
+    "CARTOLA (primeros 30k chars):",
+    '"""' + text.slice(0, 30000) + '"""',
+    "",
+    "Devuelve SOLO array JSON, sin markdown:",
+    '[{"date":"YYYY-MM-DD","amount":12345,"description":"JUMBO BILBAO","bank":"' + bankName + '","category":"Supermercado"}]'
+  ].join("\n");
+}
+
+// ============================================================
+// Sync
+// ============================================================
+function buildGmailQuery() {
+  const senders = (state.sync.senders || []).filter(Boolean);
+  if (!senders.length) return null;
+  const fromExpr = senders.length === 1 ? "from:" + senders[0] : "from:(" + senders.join(" OR ") + ")";
+  const win = Math.max(1, state.sync.windowDays || 30);
+  return fromExpr + " newer_than:" + win + "d -in:trash -in:spam";
+}
+function toastSync(kind, msg) {
+  const el = document.getElementById("sync-toast");
+  el.className = "sync-toast show " + (kind || "success");
+  el.textContent = msg;
+}
+function clearToastLater() { setTimeout(() => { const el = document.getElementById("sync-toast"); if (el) el.className = "sync-toast"; }, 10000); }
+
+async function runSync() {
+  if (syncInFlight) return;
+  if (!creds.geminiKey || !creds.googleClientId) { toastSync("warn", "Configura tus credenciales primero (botón ⚙️ arriba)."); return; }
+  const query = buildGmailQuery();
+  if (!query) { toastSync("warn", "Configura al menos un remitente en ⚙️ Ajustes."); return; }
+
+  syncInFlight = true;
+  const btn = document.getElementById("btn-sync");
+  btn.disabled = true; btn.textContent = "Sincronizando...";
+  toastSync("success", "Buscando correos en Gmail...");
+
+  try {
+    const messages = await gmailSearchMessages(query, 50);
+    const totalFound = messages.length;
+    const keywords = (state.sync.subjectKeywords || []).map(k => String(k).toLowerCase());
+    const candidates = messages.filter(m => {
+      if (!m.id || state.processedEmailIds.indexOf(m.id) >= 0) return false;
+      const subj = String(m.subject || "").toLowerCase();
+      if (keywords.length && !keywords.some(k => subj.indexOf(k) >= 0)) return false;
+      return true;
+    }).map(m => ({ email_id: m.id, subject: m.subject || "", body: m.snippet || "", date: m.date || "" }));
+
+    if (!candidates.length) {
+      state.sync.lastSyncAt = new Date().toISOString();
+      saveState(); renderHeader(); renderSyncMeta();
+      const reason = totalFound === 0
+        ? ("✓ No hay correos de " + (state.sync.senders || []).join(", ") + " en los últimos " + (state.sync.windowDays || 30) + " días. Aumenta la ventana en ⚙️ Ajustes.")
+        : ("✓ " + totalFound + " correos encontrados, todos ya procesados o sin keyword en el asunto (" + (state.sync.subjectKeywords || []).join(", ") + ").");
+      toastSync("success", reason); clearToastLater();
+      return;
+    }
+
+    toastSync("success", "Procesando " + candidates.length + " de " + totalFound + " correos con Claude...");
+
+    const out = [];
+    let llmErrors = 0, llmEmpty = 0;
+    for (let i = 0; i < candidates.length; i += 20) {
+      const batch = candidates.slice(i, i+20);
+      try {
+        const result = await askClaude(emailExtractionPrompt(batch, state.bankName));
+        const text = getResponseText(result);
+        const parsed = parseJsonFromText(text);
+        if (Array.isArray(parsed)) out.push(...parsed); else { llmEmpty++; console.warn("LLM output unparseable:", text); }
+      } catch (e) { llmErrors++; console.error("askClaude err", e); }
+    }
+
+    let accepted = 0, queued = 0, dup = 0, skipped = 0;
+    const existing = new Set(state.expenses.map(dedupeKey).concat(state.reviewQueue.map(dedupeKey)));
+    out.forEach(item => {
+      const norm = {
+        id: uid(), date: normalizeDate(item.date),
+        amount: typeof item.amount === "number" ? Math.round(item.amount) : parseAmount(item.amount),
+        description: String(item.description || "").trim(), note: "", category: item.category || null,
+        bank: item.bank || state.bankName, account: item.account_last4 ? "****" + item.account_last4 : "",
+        source: "gmail", emailId: item.email_id || null, createdAt: new Date().toISOString()
+      };
+      if (!isValidExpense(norm)) { skipped++; return; }
+      const k = dedupeKey(norm); if (existing.has(k)) { dup++; return; }
+      existing.add(k);
+      if (norm.category) { state.expenses.push(norm); state.categoryHints[norm.description.toLowerCase()] = norm.category; accepted++; }
+      else { state.reviewQueue.push(norm); queued++; }
+    });
+
+    candidates.forEach(c => { if (state.processedEmailIds.indexOf(c.email_id) < 0) state.processedEmailIds.push(c.email_id); });
+    state.sync.lastSyncAt = new Date().toISOString();
+    saveState(); rerenderAll();
+
+    const parts = [];
+    if (accepted) parts.push("✓ " + accepted + " gastos agregados");
+    if (queued) parts.push(queued + " en revisión");
+    if (dup) parts.push(dup + " duplicados omitidos");
+    if (skipped) parts.push(skipped + " inválidos descartados");
+    let kind = queued > 0 ? "warn" : "success";
+    let msg;
+    if (parts.length) msg = parts.join(" · ");
+    else if (llmErrors || llmEmpty) { kind = "error"; msg = "⚠️ Procesé " + candidates.length + " correos pero el LLM no devolvió datos válidos (" + llmErrors + " errores, " + llmEmpty + " vacías). Mira la consola para detalle."; }
+    else msg = "Sin cambios. Procesados " + candidates.length + " correos.";
+    toastSync(kind, msg); clearToastLater();
+  } catch (e) {
+    console.error("sync error", e);
+    toastSync("error", "Error: " + (e.message || e));
+  } finally {
+    syncInFlight = false;
+    btn.disabled = false; btn.textContent = "Sincronizar ahora";
+  }
+}
+
+async function processUpload() {
+  if (categorizeInFlight) return;
+  const text = document.getElementById("upload-text").value.trim();
+  const bank = document.getElementById("upload-bank").value || state.bankName;
+  const status = document.getElementById("upload-status");
+  if (!text) { status.textContent = "Pega el texto o sube un archivo."; return; }
+  if (!creds.geminiKey) { status.textContent = "Configura tu API key de Gemini primero."; return; }
+  categorizeInFlight = true;
+  const btn = document.getElementById("btn-upload-process");
+  btn.disabled = true; btn.textContent = "Procesando...";
+  status.textContent = "Pidiéndole a Claude que extraiga los gastos...";
+  try {
+    const result = await askClaude(statementParsePrompt(text, bank));
+    const out = parseJsonFromText(getResponseText(result));
+    if (!Array.isArray(out)) { status.textContent = "❌ No pude extraer gastos."; return; }
+    let accepted = 0, queued = 0, dup = 0, skipped = 0;
+    const existing = new Set(state.expenses.map(dedupeKey).concat(state.reviewQueue.map(dedupeKey)));
+    out.forEach(item => {
+      const norm = {
+        id: uid(), date: normalizeDate(item.date),
+        amount: typeof item.amount === "number" ? Math.round(item.amount) : parseAmount(item.amount),
+        description: String(item.description || "").trim(), note: "", category: item.category || null,
+        bank: item.bank || bank, account: item.account_last4 ? "****" + item.account_last4 : "",
+        source: "upload", emailId: null, createdAt: new Date().toISOString()
+      };
+      if (!isValidExpense(norm)) { skipped++; return; }
+      const k = dedupeKey(norm); if (existing.has(k)) { dup++; return; }
+      existing.add(k);
+      if (norm.category) { state.expenses.push(norm); state.categoryHints[norm.description.toLowerCase()] = norm.category; accepted++; }
+      else { state.reviewQueue.push(norm); queued++; }
+    });
+    saveState(); rerenderAll();
+    const parts = [];
+    if (accepted) parts.push("✓ " + accepted + " gastos agregados");
+    if (queued) parts.push(queued + " en revisión");
+    if (dup) parts.push(dup + " duplicados omitidos");
+    if (skipped) parts.push(skipped + " inválidos descartados");
+    status.textContent = parts.length ? parts.join(" · ") : "Sin movimientos detectados.";
+    document.getElementById("upload-text").value = "";
+    document.getElementById("upload-file").value = "";
+  } catch (e) { status.textContent = "❌ " + (e.message || e); }
+  finally { categorizeInFlight = false; btn.disabled = false; btn.textContent = "Procesar con Claude"; }
+}
+
+// ============================================================
+// Review queue
+// ============================================================
+function acceptOne(id) {
+  const idx = state.reviewQueue.findIndex(e => e.id === id);
+  if (idx < 0) return;
+  const item = state.reviewQueue[idx];
+  if (!item.category) return;
+  state.expenses.push(item);
+  state.categoryHints[item.description.toLowerCase()] = item.category;
+  state.reviewQueue.splice(idx, 1);
+  selectedReview.delete(id);
+  saveState(); rerenderAll();
+}
+function discardOne(id) {
+  const idx = state.reviewQueue.findIndex(e => e.id === id);
+  if (idx < 0) return;
+  state.reviewQueue.splice(idx, 1);
+  selectedReview.delete(id);
+  saveState(); rerenderAll();
+}
+function acceptAllWithCategory() {
+  const keep = []; let n = 0;
+  state.reviewQueue.forEach(item => {
+    if (item.category) { state.expenses.push(item); state.categoryHints[item.description.toLowerCase()] = item.category; n++; }
+    else keep.push(item);
+  });
+  state.reviewQueue = keep; selectedReview.clear(); saveState(); rerenderAll();
+  if (n) toastSync("success", "✓ Aceptados " + n + " gastos.");
+}
+function acceptSelected() {
+  const ids = Array.from(selectedReview); if (!ids.length) return;
+  let n = 0;
+  ids.forEach(id => {
+    const idx = state.reviewQueue.findIndex(e => e.id === id);
+    if (idx < 0) return;
+    const item = state.reviewQueue[idx];
+    if (!item.category) item.category = "Otros";
+    state.expenses.push(item); state.categoryHints[item.description.toLowerCase()] = item.category;
+    state.reviewQueue.splice(idx, 1); n++;
+  });
+  selectedReview.clear(); saveState(); rerenderAll();
+  if (n) toastSync("success", "✓ Aceptados " + n + " gastos.");
+}
+function discardSelected() {
+  if (!selectedReview.size) return;
+  state.reviewQueue = state.reviewQueue.filter(e => !selectedReview.has(e.id));
+  selectedReview.clear(); saveState(); rerenderAll();
+}
+function discardAll() {
+  if (!state.reviewQueue.length) return;
+  if (!confirm("¿Descartar los " + state.reviewQueue.length + " items pendientes?")) return;
+  state.reviewQueue = []; selectedReview.clear(); saveState(); rerenderAll();
+}
+async function autoCategorize() {
+  const pending = state.reviewQueue.filter(e => !e.category);
+  if (!pending.length) { toastSync("success", "No hay items sin categoría."); return; }
+  if (!creds.geminiKey) { toastSync("warn", "Configura tu API key primero."); return; }
+  const btn = document.getElementById("btn-auto-cat");
+  btn.disabled = true; btn.textContent = "Pensando...";
+  try {
+    const payload = pending.map(e => ({ id: e.id, description: e.description, amount: e.amount }));
+    const prompt = "Eres experto en finanzas personales chilenas. Asigna a cada gasto la mejor categoría.\nCategorías: " + JSON.stringify(state.categories) + ".\nGASTOS:\n" + JSON.stringify(payload) + '\nDevuelve SOLO array JSON: [{"id":"...","category":"..."}]';
+    const result = await askClaude(prompt);
+    const out = parseJsonFromText(getResponseText(result));
+    if (!Array.isArray(out)) { toastSync("error", "No pude auto-categorizar."); return; }
+    let n = 0;
+    out.forEach(o => {
+      const item = state.reviewQueue.find(e => e.id === o.id);
+      if (item && o.category && state.categories.indexOf(o.category) >= 0) { item.category = o.category; n++; }
+    });
+    saveState(); renderReview();
+    toastSync("success", "✨ Categorizados " + n + " items.");
+  } catch (e) { toastSync("error", "Error: " + (e.message || e)); }
+  finally { btn.disabled = false; btn.textContent = "✨ Auto-categorizar con Claude"; }
+}
+
+// ============================================================
+// Rendering
+// ============================================================
+function totalForMonth(ym) { return state.expenses.filter(e => e.date && e.date.startsWith(ym)).reduce((a,b) => a + (b.amount||0), 0); }
+function renderHeader() {
+  const ym = state.ui.month || ymKey(new Date());
+  document.getElementById("hs-total").textContent = fmtCLP(totalForMonth(ym));
+  document.getElementById("hs-count").textContent = state.expenses.length;
+}
+function renderSyncMeta() {
+  const last = state.sync.lastSyncAt;
+  document.getElementById("sync-last-hint").textContent = last ? "Último sync: " + relTime(last) : "Sin sincronizar aún";
+  const info = document.getElementById("sync-info");
+  if (!creds.geminiKey || !creds.googleClientId) info.textContent = "Configura tus credenciales (botón ⚙️ arriba) para sincronizar.";
+  else if (!gmailTokenValid()) info.textContent = "Conecta tu Gmail (botón ⚙️ arriba) para sincronizar.";
+  else info.textContent = last ? ("Último sync: " + relTime(last) + ". " + state.processedEmailIds.length + " correos procesados.") : "Listo para sincronizar.";
+  document.getElementById("cfg-senders").value = (state.sync.senders || []).join("\n");
+  document.getElementById("cfg-keywords").value = (state.sync.subjectKeywords || []).join(", ");
+  document.getElementById("cfg-window").value = state.sync.windowDays || 30;
+}
+function renderDashboard() {
+  const ym = state.ui.month || ymKey(new Date());
+  document.getElementById("month-picker").value = ym;
+  const tot = totalForMonth(ym);
+  document.getElementById("stat-total").textContent = fmtCLP(tot);
+  const [y, m] = ym.split("-").map(Number);
+  const prev = new Date(y, m-2, 1);
+  const prevYm = ymKey(prev);
+  const prevTot = totalForMonth(prevYm);
+  document.getElementById("stat-prev").textContent = fmtCLP(prevTot);
+  document.getElementById("stat-prev-sub").textContent = prevYm;
+  const deltaEl = document.getElementById("stat-delta");
+  if (prevTot > 0) {
+    const pct = ((tot - prevTot) / prevTot) * 100;
+    const sign = pct > 0 ? "▲ +" : pct < 0 ? "▼ " : "= ";
+    deltaEl.className = "delta " + (pct > 1 ? "up" : pct < -1 ? "down" : "flat");
+    deltaEl.textContent = sign + Math.abs(pct).toFixed(1) + "% vs mes anterior";
+  } else { deltaEl.className = "delta flat"; deltaEl.textContent = "Sin datos de mes anterior"; }
+  const now = new Date(); const currentYm = ymKey(now);
+  let dayCount = 30;
+  if (ym === currentYm) dayCount = Math.max(1, now.getDate());
+  else dayCount = new Date(y, m, 0).getDate();
+  document.getElementById("stat-avg").textContent = fmtCLP(tot / dayCount);
+  document.getElementById("stat-avg-sub").textContent = "sobre " + dayCount + " días";
+  renderCategoryChart(ym);
+}
+function renderCategoryChart(ym) {
+  const ctx = document.getElementById("cat-chart");
+  const emptyEl = document.getElementById("chart-empty");
+  const byCat = {};
+  state.expenses.forEach(e => { if (e.date && e.date.startsWith(ym)) { const c = e.category || "Sin categoría"; byCat[c] = (byCat[c] || 0) + (e.amount || 0); } });
+  const labels = Object.keys(byCat).sort((a,b) => byCat[b] - byCat[a]);
+  const data = labels.map(k => byCat[k]);
+  if (!labels.length) { if (catChart) { catChart.destroy(); catChart = null; } ctx.style.display = "none"; emptyEl.classList.remove("hidden"); return; }
+  ctx.style.display = ""; emptyEl.classList.add("hidden");
+  const palette = ["#2563eb","#16a34a","#d97706","#dc2626","#9333ea","#0891b2","#65a30d","#db2777","#ea580c","#0284c7","#a855f7","#14b8a6","#94a3b8"];
+  const colors = labels.map((_,i) => palette[i % palette.length]);
+  if (catChart) catChart.destroy();
+  if (typeof Chart === "undefined") return;
+  catChart = new Chart(ctx, {
+    type: "doughnut",
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: "#fff" }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: "60%", plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 }, padding: 8 } }, tooltip: { callbacks: { label: ctx => ctx.label + ": " + fmtCLP(ctx.parsed) } } } }
+  });
+}
+function renderReview() {
+  const card = document.getElementById("review-card");
+  const list = document.getElementById("review-list");
+  document.getElementById("review-count").textContent = state.reviewQueue.length;
+  if (!state.reviewQueue.length) { card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  list.innerHTML = state.reviewQueue.map(e => {
+    const opts = ['<option value="">— sin categoría —</option>'].concat(state.categories.map(c => '<option value="' + escapeHtml(c) + '"' + (e.category === c ? " selected" : "") + ">" + escapeHtml(c) + "</option>")).join("");
+    const checked = selectedReview.has(e.id) ? "checked" : "";
+    return '<div class="review-item" data-id="' + e.id + '"><input type="checkbox" class="ri-check" ' + checked + '><span class="ri-date">' + escapeHtml(e.date) + '</span><span class="ri-desc">' + escapeHtml(e.description) + '</span><select class="ri-cat">' + opts + '</select><span class="ri-amt">' + fmtCLP(e.amount) + '</span><button class="btn primary ri-accept" ' + (e.category ? "" : 'disabled title="Asigna una categoría"') + '>✓</button><button class="btn danger ri-discard">✕</button></div>';
+  }).join("");
+  Array.from(list.querySelectorAll(".review-item")).forEach(el => {
+    const id = el.dataset.id;
+    el.querySelector(".ri-check").addEventListener("change", ev => { if (ev.target.checked) selectedReview.add(id); else selectedReview.delete(id); });
+    el.querySelector(".ri-cat").addEventListener("change", ev => {
+      const item = state.reviewQueue.find(e => e.id === id);
+      if (!item) return;
+      item.category = ev.target.value || null;
+      saveState();
+      const acc = el.querySelector(".ri-accept");
+      if (item.category) { acc.disabled = false; acc.removeAttribute("title"); } else { acc.disabled = true; acc.setAttribute("title", "Asigna una categoría"); }
+    });
+    el.querySelector(".ri-accept").addEventListener("click", () => acceptOne(id));
+    el.querySelector(".ri-discard").addEventListener("click", () => discardOne(id));
+  });
+}
+function applyFilters(list) {
+  const f = state.ui.filters;
+  const q = (f.search || "").trim().toLowerCase();
+  return list.filter(e => {
+    if (f.category && e.category !== f.category) return false;
+    if (f.bank && e.bank !== f.bank) return false;
+    if (f.source && e.source !== f.source) return false;
+    if (q) { const hay = ((e.description||"") + " " + (e.note||"") + " " + (e.category||"")).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
+    return true;
+  });
+}
+function sortList(list) {
+  const s = state.ui.sort, dir = s.dir === "asc" ? 1 : -1;
+  return list.slice().sort((a, b) => {
+    let va = a[s.field], vb = b[s.field];
+    if (s.field === "amount") return ((va||0) - (vb||0)) * dir;
+    va = String(va||"").toLowerCase(); vb = String(vb||"").toLowerCase();
+    if (va < vb) return -1 * dir; if (va > vb) return 1 * dir; return 0;
+  });
+}
+function renderTable() {
+  const catSel = document.getElementById("f-category"); const bankSel = document.getElementById("f-bank");
+  const cats = new Set(); const banks = new Set();
+  state.expenses.forEach(e => { if (e.category) cats.add(e.category); if (e.bank) banks.add(e.bank); });
+  state.categories.forEach(c => cats.add(c));
+  catSel.innerHTML = '<option value="">Todas</option>' + Array.from(cats).sort().map(c => '<option value="' + escapeHtml(c) + '"' + (state.ui.filters.category === c ? " selected" : "") + ">" + escapeHtml(c) + "</option>").join("");
+  bankSel.innerHTML = '<option value="">Todos</option>' + Array.from(banks).sort().map(b => '<option value="' + escapeHtml(b) + '"' + (state.ui.filters.bank === b ? " selected" : "") + ">" + escapeHtml(b) + "</option>").join("");
+  ["date","description","category","bank","source","amount"].forEach(f => {
+    const el = document.getElementById("si-" + f);
+    if (el) el.textContent = state.ui.sort.field === f ? (state.ui.sort.dir === "asc" ? "▲" : "▼") : "";
+  });
+  const filtered = sortList(applyFilters(state.expenses));
+  const body = document.getElementById("expenses-body"); const empty = document.getElementById("empty-table");
+  if (!filtered.length) {
+    body.innerHTML = ""; empty.classList.remove("hidden");
+    empty.textContent = state.expenses.length ? "Ningún gasto coincide con los filtros." : "Aún no hay gastos. Configura credenciales y sincroniza.";
+  } else {
+    empty.classList.add("hidden");
+    body.innerHTML = filtered.map(e => {
+      const cat = e.category ? '<span class="tag cat" data-id="' + e.id + '" data-action="cat">' + escapeHtml(e.category) + '</span>' : '<span class="tag cat empty" data-id="' + e.id + '" data-action="cat">+ asignar</span>';
+      const noteRow = e.note ? '<div class="row-note">' + escapeHtml(e.note) + '</div>' : '';
+      const acct = e.account ? '<div class="sub">' + escapeHtml(e.account) + '</div>' : '';
+      const srcLabel = e.source === "gmail" ? "Correo" : (e.source === "upload" ? "Cartola" : "—");
+      return '<tr data-id="' + e.id + '"><td>' + escapeHtml(e.date) + '</td><td><div>' + escapeHtml(e.description) + '</div>' + acct + noteRow + '</td><td>' + cat + '</td><td><span class="tag">' + escapeHtml(e.bank || "") + '</span></td><td><span class="tag">' + srcLabel + '</span></td><td class="amt">' + fmtCLP(e.amount) + '</td><td><div class="row-actions"><button data-id="' + e.id + '" data-action="note" title="Editar nota">✎</button><button data-id="' + e.id + '" data-action="delete" title="Borrar">🗑</button></div></td></tr>';
+    }).join("");
+  }
+  const total = filtered.reduce((a,b) => a + (b.amount||0), 0);
+  document.getElementById("table-info").textContent = filtered.length + " gasto" + (filtered.length === 1 ? "" : "s");
+  document.getElementById("table-total").textContent = "Total filtrado: " + fmtCLP(total);
+}
+function renderCategoriesEditor() {
+  const ed = document.getElementById("cat-editor");
+  ed.innerHTML = state.categories.map(c => '<span class="cat-pill">' + escapeHtml(c) + ' <button data-cat="' + escapeHtml(c) + '" title="Quitar">×</button></span>').join("");
+  Array.from(ed.querySelectorAll("button")).forEach(b => b.addEventListener("click", () => {
+    const cat = b.dataset.cat;
+    const used = state.expenses.some(e => e.category === cat);
+    if (used && !confirm("La categoría \"" + cat + "\" tiene gastos asignados. ¿Quitarla igual?")) return;
+    state.categories = state.categories.filter(c => c !== cat);
+    saveState(); renderCategoriesEditor(); renderTable(); renderReview();
+  }));
+}
+function chatAvailable() { return !!creds.geminiKey; }
+function renderChat() {
+  const msgs = document.getElementById("chat-messages");
+  const input = document.getElementById("chat-input"); const send = document.getElementById("btn-chat-send");
+  if (!chatAvailable()) { input.disabled = true; send.disabled = true; input.placeholder = "Configura tu API key de Gemini para usar el chat"; }
+  else { if (!chatInFlight) { input.disabled = false; send.disabled = false; } input.placeholder = "Pregunta algo sobre tus gastos..."; }
+  const list = state.chat.messages || [];
+  if (!list.length && !chatInFlight) {
+    msgs.innerHTML = '<div class="chat-empty"><p>Tengo acceso a tus ' + state.expenses.length + ' gastos. Pregunta lo que quieras.</p><div class="chat-suggestions"><button class="chat-suggestion" data-q="¿Cuánto he gastado este mes?">¿Cuánto he gastado este mes?</button><button class="chat-suggestion" data-q="¿En qué categoría gasto más?">¿En qué categoría gasto más?</button><button class="chat-suggestion" data-q="Mis 5 gastos más grandes">Mis 5 gastos más grandes</button><button class="chat-suggestion" data-q="¿Cuánto en Uber este mes?">¿Cuánto en Uber este mes?</button></div></div>';
+    Array.from(msgs.querySelectorAll(".chat-suggestion")).forEach(b => b.addEventListener("click", () => { document.getElementById("chat-input").value = b.dataset.q; sendChat(); }));
+    return;
+  }
+  msgs.innerHTML = list.map(m => { const cls = m.role === "user" ? "user" : (m.role === "error" ? "bot error" : "bot"); return '<div class="bubble ' + cls + '">' + escapeHtml(m.content) + '</div>'; }).join("");
+  if (chatInFlight) msgs.innerHTML += '<div class="bubble bot"><span class="typing"><span></span><span></span><span></span></span></div>';
+  requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
+}
+function chatSystemPrompt(question) {
+  const ym = state.ui.month || ymKey(new Date());
+  const today = new Date().toISOString().slice(0,10);
+  const exp = state.expenses.slice(-500);
+  const history = (state.chat.messages || []).slice(-10).map(m => (m.role === "user" ? "Usuario" : "Asistente") + ": " + m.content).join("\n");
+  return [
+    "Eres un asistente financiero personal. El usuario es chileno y todos los montos están en CLP.", "",
+    "CONTEXTO:", "- Hoy: " + today, "- Mes seleccionado: " + ym, "- Banco principal: " + state.bankName,
+    "- Categorías disponibles: " + JSON.stringify(state.categories), "- Total de gastos: " + state.expenses.length, "",
+    "REGLAS DE RESPUESTA:",
+    "- Responde SIEMPRE en español, breve y directo. Sin saludos ni preámbulos.",
+    "- Formato de monto: \"$12.345\" (punto como separador de miles).",
+    "- Para buscar un comercio (ej: \"Uber\"), usa substring case-insensitive sobre \"description\".",
+    "- \"Este mes\" = year-month " + ym + ". \"Mes pasado\" = el anterior.",
+    "- Si no hay datos relevantes, dilo: no inventes.",
+    "- Lista movimientos individuales con guión (fecha, descripción, monto) cuando tenga sentido.",
+    "- Muestra el total al final cuando agregues sumas.", "",
+    "DATOS (JSON con todos los gastos):", JSON.stringify(exp), "",
+    "CONVERSACIÓN PREVIA:", history || "(ninguna)", "",
+    "PREGUNTA DEL USUARIO:", question, "",
+    "Responde directamente, sin saludos:"
+  ].join("\n");
+}
+async function sendChat() {
+  if (chatInFlight) return;
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text || !chatAvailable()) return;
+  state.chat.messages = state.chat.messages || [];
+  state.chat.messages.push({ role: "user", content: text, ts: Date.now() });
+  while (state.chat.messages.length > 50) state.chat.messages.shift();
+  input.value = ""; autoSizeChatInput();
+  chatInFlight = true; saveState(); renderChat();
+  document.getElementById("btn-chat-send").disabled = true; document.getElementById("chat-input").disabled = true;
+  try {
+    const result = await askClaude(chatSystemPrompt(text));
+    const reply = getResponseText(result) || "(sin respuesta)";
+    state.chat.messages.push({ role: "assistant", content: reply.trim(), ts: Date.now() });
+  } catch (e) {
+    state.chat.messages.push({ role: "error", content: "❌ Error: " + (e.message || e), ts: Date.now() });
+  } finally {
+    while (state.chat.messages.length > 50) state.chat.messages.shift();
+    chatInFlight = false; saveState(); renderChat();
+    document.getElementById("btn-chat-send").disabled = false; document.getElementById("chat-input").disabled = false;
+    document.getElementById("chat-input").focus();
+  }
+}
+function autoSizeChatInput() { const ta = document.getElementById("chat-input"); ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; }
+
+function openCatModal(id) {
+  const e = state.expenses.find(x => x.id === id) || state.reviewQueue.find(x => x.id === id);
+  if (!e) return;
+  editingExpenseId = id;
+  document.getElementById("modal-cat-desc").textContent = e.description + " · " + fmtCLP(e.amount);
+  const sel = document.getElementById("modal-cat-select");
+  sel.innerHTML = '<option value="">— sin categoría —</option>' + state.categories.map(c => '<option value="' + escapeHtml(c) + '"' + (e.category === c ? " selected" : "") + ">" + escapeHtml(c) + "</option>").join("");
+  document.getElementById("modal-cat").classList.add("open");
+  setTimeout(() => sel.focus(), 30);
+}
+function saveCatModal() {
+  const id = editingExpenseId; const value = document.getElementById("modal-cat-select").value || null;
+  const e = state.expenses.find(x => x.id === id) || state.reviewQueue.find(x => x.id === id);
+  if (e) { e.category = value; if (value && e.description) state.categoryHints[e.description.toLowerCase()] = value; saveState(); rerenderAll(); }
+  closeCatModal();
+}
+function closeCatModal() { editingExpenseId = null; document.getElementById("modal-cat").classList.remove("open"); }
+function openNoteModal(id) {
+  const e = state.expenses.find(x => x.id === id); if (!e) return;
+  noteEditingId = id;
+  document.getElementById("modal-note-desc").textContent = e.description + " · " + fmtCLP(e.amount);
+  document.getElementById("modal-note-text").value = e.note || "";
+  document.getElementById("modal-note").classList.add("open");
+  setTimeout(() => document.getElementById("modal-note-text").focus(), 30);
+}
+function saveNoteModal() {
+  const e = state.expenses.find(x => x.id === noteEditingId);
+  if (e) { e.note = document.getElementById("modal-note-text").value.trim(); saveState(); renderTable(); }
+  closeNoteModal();
+}
+function clearNoteModal() { const e = state.expenses.find(x => x.id === noteEditingId); if (e) { e.note = ""; saveState(); renderTable(); } closeNoteModal(); }
+function closeNoteModal() { noteEditingId = null; document.getElementById("modal-note").classList.remove("open"); }
+function deleteExpense(id) {
+  const e = state.expenses.find(x => x.id === id); if (!e) return;
+  if (!confirm("¿Borrar este gasto?\n" + e.description + " · " + fmtCLP(e.amount))) return;
+  state.expenses = state.expenses.filter(x => x.id !== id);
+  saveState(); rerenderAll();
+}
+
+// ============================================================
+// Credentials modal
+// ============================================================
+function openCredsModal() {
+  document.getElementById("cred-anthropic").value = creds.geminiKey || "";
+  document.getElementById("cred-google").value = creds.googleClientId || "";
+  updateGmailStatus();
+  document.getElementById("modal-creds").classList.add("open");
+}
+function closeCredsModal() { document.getElementById("modal-creds").classList.remove("open"); }
+function saveCredsModal() {
+  const ak = document.getElementById("cred-anthropic").value.trim();
+  const gc = document.getElementById("cred-google").value.trim();
+  if (ak) creds.geminiKey = ak;
+  if (gc && gc !== creds.googleClientId) { creds.googleClientId = gc; tokenClient = null; initGoogleClient(); }
+  saveCreds(); updateGmailStatus(); rerenderAll();
+  closeCredsModal();
+  toastSync("success", "✓ Credenciales guardadas."); clearToastLater();
+}
+
+// ============================================================
+// Boot, wire, render orchestrator
+// ============================================================
+function populateBankSelect() {
+  const sel = document.getElementById("upload-bank"); if (!sel) return;
+  const banks = new Set(BANK_PRESETS); banks.add(state.bankName);
+  state.expenses.forEach(e => { if (e.bank) banks.add(e.bank); });
+  sel.innerHTML = Array.from(banks).map(b => '<option value="' + escapeHtml(b) + '"' + (b === state.bankName ? " selected" : "") + ">" + escapeHtml(b) + "</option>").join("");
+}
+function rerenderAll() {
+  renderHeader(); renderSyncMeta(); renderReview(); renderDashboard();
+  renderTable(); renderCategoriesEditor(); renderChat(); populateBankSelect(); updateGmailStatus();
+}
+
+function wireEvents() {
+  document.getElementById("btn-sync").addEventListener("click", () => runSync());
+  document.getElementById("btn-sync-settings").addEventListener("click", () => document.getElementById("sync-settings").classList.toggle("open"));
+  document.getElementById("btn-save-sync-settings").addEventListener("click", () => {
+    state.sync.senders = document.getElementById("cfg-senders").value.split("\n").map(s => s.trim()).filter(Boolean);
+    state.sync.subjectKeywords = document.getElementById("cfg-keywords").value.split(",").map(s => s.trim()).filter(Boolean);
+    state.sync.windowDays = Math.max(1, Math.min(180, parseInt(document.getElementById("cfg-window").value, 10) || 30));
+    saveState(); document.getElementById("sync-settings").classList.remove("open");
+    toastSync("success", "✓ Ajustes guardados."); clearToastLater(); renderSyncMeta();
+  });
+  document.getElementById("btn-reprocess").addEventListener("click", () => {
+    const n = state.processedEmailIds.length;
+    if (!n) { toastSync("success", "No hay correos procesados aún."); clearToastLater(); return; }
+    if (!confirm("Olvidar " + n + " correos procesados para re-leerlos. Gastos actuales NO se borran. ¿Continuar?")) return;
+    state.processedEmailIds = []; saveState();
+    toastSync("success", "✓ IDs olvidados. Dale Sincronizar."); clearToastLater(); renderSyncMeta();
+  });
+
+  document.getElementById("upload-file").addEventListener("change", ev => {
+    const f = ev.target.files && ev.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { document.getElementById("upload-text").value = String(r.result || ""); };
+    r.onerror = () => { document.getElementById("upload-status").textContent = "❌ No pude leer el archivo."; };
+    r.readAsText(f);
+  });
+  document.getElementById("btn-upload-process").addEventListener("click", processUpload);
+
+  document.getElementById("btn-accept-with-cat").addEventListener("click", acceptAllWithCategory);
+  document.getElementById("btn-auto-cat").addEventListener("click", autoCategorize);
+  document.getElementById("btn-select-all").addEventListener("click", () => { state.reviewQueue.forEach(e => selectedReview.add(e.id)); renderReview(); });
+  document.getElementById("btn-accept-selected").addEventListener("click", acceptSelected);
+  document.getElementById("btn-discard-selected").addEventListener("click", discardSelected);
+  document.getElementById("btn-discard-all").addEventListener("click", discardAll);
+
+  document.getElementById("month-picker").addEventListener("change", ev => { state.ui.month = ev.target.value || ymKey(new Date()); saveState(); renderHeader(); renderDashboard(); });
+
+  document.getElementById("f-search").addEventListener("input", ev => { state.ui.filters.search = ev.target.value; saveState(); renderTable(); });
+  document.getElementById("f-category").addEventListener("change", ev => { state.ui.filters.category = ev.target.value; saveState(); renderTable(); });
+  document.getElementById("f-bank").addEventListener("change", ev => { state.ui.filters.bank = ev.target.value; saveState(); renderTable(); });
+  document.getElementById("f-source").addEventListener("change", ev => { state.ui.filters.source = ev.target.value; saveState(); renderTable(); });
+  document.getElementById("btn-clear-filters").addEventListener("click", () => { state.ui.filters = { search: "", category: "", bank: "", source: "" }; document.getElementById("f-search").value = ""; saveState(); renderTable(); });
+
+  Array.from(document.querySelectorAll("table.expenses th[data-sort]")).forEach(th => th.addEventListener("click", () => {
+    const f = th.dataset.sort;
+    if (state.ui.sort.field === f) state.ui.sort.dir = state.ui.sort.dir === "asc" ? "desc" : "asc";
+    else { state.ui.sort.field = f; state.ui.sort.dir = (f === "amount" || f === "date") ? "desc" : "asc"; }
+    saveState(); renderTable();
+  }));
+
+  document.getElementById("expenses-body").addEventListener("click", ev => {
+    const t = ev.target.closest("[data-action]"); if (!t) return;
+    const id = t.dataset.id, action = t.dataset.action;
+    if (action === "cat") openCatModal(id); else if (action === "note") openNoteModal(id); else if (action === "delete") deleteExpense(id);
+  });
+
+  document.getElementById("modal-cat-cancel").addEventListener("click", closeCatModal);
+  document.getElementById("modal-cat-save").addEventListener("click", saveCatModal);
+  document.getElementById("modal-cat").addEventListener("click", ev => { if (ev.target === ev.currentTarget) closeCatModal(); });
+  document.getElementById("modal-cat-select").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); saveCatModal(); } else if (ev.key === "Escape") closeCatModal(); });
+
+  document.getElementById("modal-note-cancel").addEventListener("click", closeNoteModal);
+  document.getElementById("modal-note-save").addEventListener("click", saveNoteModal);
+  document.getElementById("modal-note-clear").addEventListener("click", clearNoteModal);
+  document.getElementById("modal-note").addEventListener("click", ev => { if (ev.target === ev.currentTarget) closeNoteModal(); });
+  document.getElementById("modal-note-text").addEventListener("keydown", ev => { if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") { ev.preventDefault(); saveNoteModal(); } else if (ev.key === "Escape") closeNoteModal(); });
+
+  document.getElementById("btn-chat-send").addEventListener("click", sendChat);
+  document.getElementById("chat-input").addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); sendChat(); } });
+  document.getElementById("chat-input").addEventListener("input", autoSizeChatInput);
+  document.getElementById("btn-chat-clear").addEventListener("click", () => { if (!state.chat.messages.length) return; if (!confirm("¿Borrar todo el historial del chat?")) return; state.chat.messages = []; saveState(); renderChat(); });
+
+  document.getElementById("btn-export").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "panel-gastos-" + new Date().toISOString().slice(0,10) + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  document.getElementById("import-file").addEventListener("change", ev => {
+    const f = ev.target.files && ev.target.files[0]; if (!f) return;
+    if (!confirm("Esto reemplazará todos tus datos actuales. ¿Continuar?")) { ev.target.value = ""; return; }
+    const r = new FileReader();
+    r.onload = () => {
+      try { const parsed = JSON.parse(String(r.result || "")); if (parsed && typeof parsed === "object") { state = Object.assign(defaultState(), parsed); saveState(); rerenderAll(); toastSync("success", "✓ Datos importados."); clearToastLater(); } }
+      catch (e) { toastSync("error", "❌ Archivo inválido."); }
+      ev.target.value = "";
+    };
+    r.readAsText(f);
+  });
+  document.getElementById("btn-reset").addEventListener("click", () => {
+    if (!confirm("Esto borra TODOS los gastos, cola, chat e IDs procesados. ¿Continuar?")) return;
+    if (!confirm("Confirma de nuevo: ¿borrar todo?")) return;
+    state = defaultState(); saveState(); rerenderAll();
+    toastSync("success", "Datos reseteados."); clearToastLater();
+  });
+  document.getElementById("btn-cat-add").addEventListener("click", () => {
+    const v = document.getElementById("cat-new").value.trim(); if (!v) return;
+    if (state.categories.indexOf(v) >= 0) { alert("Esa categoría ya existe."); return; }
+    state.categories.push(v); document.getElementById("cat-new").value = "";
+    saveState(); renderCategoriesEditor(); renderTable(); renderReview();
+  });
+  document.getElementById("cat-new").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); document.getElementById("btn-cat-add").click(); } });
+
+  // Credentials
+  document.getElementById("gmail-chip").addEventListener("click", openCredsModal);
+  document.getElementById("btn-open-creds").addEventListener("click", openCredsModal);
+  document.getElementById("btn-creds-close").addEventListener("click", closeCredsModal);
+  document.getElementById("btn-creds-save").addEventListener("click", saveCredsModal);
+  document.getElementById("modal-creds").addEventListener("click", ev => { if (ev.target === ev.currentTarget) closeCredsModal(); });
+  document.getElementById("btn-connect-gmail").addEventListener("click", async () => {
+    const gc = document.getElementById("cred-google").value.trim();
+    if (!gc) { alert("Pega primero tu Google OAuth Client ID."); return; }
+    if (gc !== creds.googleClientId) { creds.googleClientId = gc; saveCreds(); tokenClient = null; initGoogleClient(); }
+    try {
+      await new Promise(r => setTimeout(r, 200)); // give init a tick
+      await requestGmailToken("consent");
+      updateGmailStatus();
+      alert("✓ Gmail conectado. Cierra este diálogo y dale 'Sincronizar ahora'.");
+    } catch (e) { alert("❌ No se pudo conectar Gmail: " + (e.message || e)); }
+  });
+}
+
+(function boot() {
+  wireEvents();
+  rerenderAll();
+  initGoogleClient();
+  // If no credentials at all, open setup modal
+  if (!creds.geminiKey || !creds.googleClientId) {
+    setTimeout(openCredsModal, 500);
+  }
+})();
+</script>
+</body>
+</html>
