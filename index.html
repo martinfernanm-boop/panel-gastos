@@ -432,7 +432,7 @@ table.expenses tr:hover { background: var(--surface-2); }
 // ============================================================
 const STORAGE_KEY = "panel_gastos_state_v1";
 const CREDS_KEY = "panel_gastos_creds_v1";
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-2.5-flash-lite";
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const DEFAULT_CATEGORIES = [
   "Supermercado","Restaurantes y delivery","Transporte","Servicios básicos","Salud",
@@ -780,7 +780,10 @@ async function runSync() {
       else { state.reviewQueue.push(norm); queued++; }
     });
 
-    candidates.forEach(c => { if (state.processedEmailIds.indexOf(c.email_id) < 0) state.processedEmailIds.push(c.email_id); });
+    // Only mark as processed if at least one batch succeeded
+    if (llmErrors < Math.ceil(candidates.length / 20)) {
+      candidates.forEach(c => { if (state.processedEmailIds.indexOf(c.email_id) < 0) state.processedEmailIds.push(c.email_id); });
+    }
     state.sync.lastSyncAt = new Date().toISOString();
     saveState(); rerenderAll();
 
