@@ -26,6 +26,9 @@
   --warning-soft: #fffbeb;
   --warning-strong: #fef3c7;
   --chip-bg: #f2f4f7;
+  --success-text: #14532d;
+  --danger-text: #7f1d1d;
+  --warning-text: #78350f;
   --chat-user: #2563eb;
   --chat-user-text: #ffffff;
   --chat-bot: #f2f4f7;
@@ -36,14 +39,45 @@
   --shadow: 0 4px 12px rgba(16, 24, 40, 0.06);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1220;
+  --surface: #131c2e;
+  --surface-2: #1a2438;
+  --border: #243049;
+  --border-strong: #33425c;
+  --text: #e7ecf5;
+  --text-muted: #9aa7bd;
+  --text-soft: #74839f;
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-soft: #1b2c4f;
+  --success: #22c55e;
+  --success-soft: #10291c;
+  --danger: #f87171;
+  --danger-soft: #371722;
+  --warning: #fbbf24;
+  --warning-soft: #32270f;
+  --warning-strong: #4a3a15;
+  --chip-bg: #1e293b;
+  --success-text: #86efac;
+  --danger-text: #fca5a5;
+  --warning-text: #fcd34d;
+  --chat-user: #2563eb;
+  --chat-user-text: #ffffff;
+  --chat-bot: #1e293b;
+  --chat-bot-text: #e7ecf5;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
 * { box-sizing: border-box; }
 body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.45; }
 .app { max-width: 1280px; margin: 0 auto; padding: 16px 18px 64px; display: flex; flex-direction: column; gap: 18px; }
 .header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
 .header h1 { font-size: 22px; font-weight: 600; margin: 0; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: var(--chip-bg); font-size: 12px; color: var(--text-muted); font-weight: 500; }
-.chip.connected { background: var(--success-soft); color: #14532d; cursor: pointer; }
-.chip.disconnected { background: var(--danger-soft); color: #7f1d1d; cursor: pointer; }
+.chip.connected { background: var(--success-soft); color: var(--success-text); cursor: pointer; }
+.chip.disconnected { background: var(--danger-soft); color: var(--danger-text); cursor: pointer; }
 .header-stats { margin-left: auto; display: flex; gap: 18px; }
 .header-stats .ks { font-size: 12px; color: var(--text-muted); }
 .header-stats .kv { font-size: 18px; font-weight: 600; color: var(--text); }
@@ -65,6 +99,7 @@ body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-fa
 .btn.ghost:hover { background: var(--surface-2); color: var(--text); }
 .btn.lg { padding: 10px 18px; font-size: 14px; }
 .btn.icon { padding: 6px; width: 30px; height: 30px; justify-content: center; }
+.btn.toggled { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
 input[type=text], input[type=number], input[type=month], input[type=search], input[type=password], select, textarea {
   width: 100%; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); font-size: 13px; font-family: var(--font); color: var(--text);
 }
@@ -78,9 +113,9 @@ label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom
 .sync-settings .full { grid-column: 1 / -1; }
 .sync-toast { padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px; margin-top: 12px; display: none; }
 .sync-toast.show { display: block; }
-.sync-toast.success { background: var(--success-soft); color: #14532d; }
-.sync-toast.warn { background: var(--warning-soft); color: #78350f; }
-.sync-toast.error { background: var(--danger-soft); color: #7f1d1d; }
+.sync-toast.success { background: var(--success-soft); color: var(--success-text); }
+.sync-toast.warn { background: var(--warning-soft); color: var(--warning-text); }
+.sync-toast.error { background: var(--danger-soft); color: var(--danger-text); }
 .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .upload-grid .full { grid-column: 1 / -1; }
 .review-section { border-left: 4px solid var(--warning); }
@@ -92,8 +127,14 @@ label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom
 .review-item .ri-amt { font-weight: 600; }
 .review-item .ri-date { font-size: 12px; color: var(--text-muted); width: 90px; }
 .review-item select { width: 180px; flex: 0 0 auto; }
-.dashboard { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(280px, 1fr); gap: 16px; }
-.dashboard-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.dashboard-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.insights { display: flex; flex-wrap: wrap; gap: 10px; }
+.insight { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 10px; flex: 1 1 230px; min-width: 210px; }
+.insight .ico { font-size: 20px; }
+.insight .it-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.insight .it-value { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+.insight .it-sub { font-size: 11px; color: var(--text-soft); }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow-sm); }
 .stat-card .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .stat-card .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
@@ -109,7 +150,7 @@ label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom
 .chart-empty { text-align: center; color: var(--text-soft); padding: 40px 0; font-size: 13px; }
 .tc-grid { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
 .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; overflow: hidden; }
-.filters { padding: 12px 14px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; }
+.filters { padding: 12px 14px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto auto; gap: 8px; align-items: end; }
 .filters .filter-group label { margin-bottom: 3px; font-size: 11px; }
 .table-wrap { overflow-x: auto; }
 table.expenses { width: 100%; border-collapse: collapse; }
@@ -121,6 +162,7 @@ table.expenses tr:hover { background: var(--surface-2); }
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--chip-bg); color: var(--text-muted); font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid transparent; }
 .tag.cat { background: var(--primary-soft); color: var(--primary); }
 .tag.cat.empty { background: var(--warning-soft); color: var(--warning); border: 1px dashed var(--warning); }
+.tag.recur { background: var(--success-soft); color: var(--success-text); cursor: help; padding: 2px 6px; }
 .tag:hover { border-color: var(--primary); }
 .row-actions { display: flex; gap: 4px; }
 .row-actions button { padding: 4px 6px; background: transparent; border: none; cursor: pointer; color: var(--text-soft); font-size: 13px; border-radius: 4px; }
@@ -137,7 +179,8 @@ table.expenses tr:hover { background: var(--surface-2); }
 .bubble { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.45; }
 .bubble.user { align-self: flex-end; background: var(--chat-user); color: var(--chat-user-text); border-bottom-right-radius: 4px; }
 .bubble.bot { align-self: flex-start; background: var(--chat-bot); color: var(--chat-bot-text); border-bottom-left-radius: 4px; }
-.bubble.error { background: var(--danger-soft); color: #7f1d1d; }
+.bubble.error { background: var(--danger-soft); color: var(--danger-text); }
+.bubble code { background: rgba(127,127,127,0.18); padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .chat-empty { color: var(--text-soft); text-align: center; padding: 12px 8px; }
 .chat-empty p { margin: 0 0 12px; font-size: 13px; }
 .chat-suggestions { display: flex; flex-direction: column; gap: 6px; }
@@ -177,14 +220,18 @@ table.expenses tr:hover { background: var(--surface-2); }
 @media (max-width: 1020px) {
   .tc-grid { grid-template-columns: 1fr; }
   .chat-card { height: 520px; position: relative; top: 0; }
+  .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 820px) {
-  .dashboard { grid-template-columns: 1fr; }
-  .dashboard-stats { grid-template-columns: 1fr; }
+  .dashboard-stats { grid-template-columns: 1fr 1fr; }
   .filters { grid-template-columns: 1fr 1fr; }
   .upload-grid, .sync-settings.open, .settings-grid { grid-template-columns: 1fr; }
   .review-item { flex-wrap: wrap; }
   .review-item .ri-desc { width: 100%; }
+}
+@media (max-width: 520px) {
+  .dashboard-stats { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -195,6 +242,7 @@ table.expenses tr:hover { background: var(--surface-2); }
     <h1>Mi Panel de Gastos</h1>
     <span class="chip">Chile · CLP</span>
     <span class="chip disconnected" id="gmail-chip" title="Configurar credenciales">⚙️ Configurar</span>
+    <button class="btn ghost icon" id="btn-theme" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema">🌙</button>
     <div class="header-stats">
       <div><div class="ks">Total del mes</div><div class="kv" id="hs-total">$0</div></div>
       <div><div class="ks">Movimientos</div><div class="kv" id="hs-count">0</div></div>
@@ -251,7 +299,7 @@ table.expenses tr:hover { background: var(--surface-2); }
             <textarea id="upload-text" rows="6" placeholder="Pega aquí los movimientos de tu cartola..."></textarea>
           </div>
           <div class="full">
-            <button id="btn-upload-process" class="btn primary lg">Procesar con Claude</button>
+            <button id="btn-upload-process" class="btn primary lg">Procesar con IA</button>
             <span id="upload-status" class="sub" style="margin-left:10px"></span>
           </div>
         </div>
@@ -268,7 +316,7 @@ table.expenses tr:hover { background: var(--surface-2); }
     <div class="card-body">
       <div class="review-actions">
         <button class="btn primary" id="btn-accept-with-cat">✓ Aceptar todos con categoría</button>
-        <button class="btn" id="btn-auto-cat">✨ Auto-categorizar con Claude</button>
+        <button class="btn" id="btn-auto-cat">✨ Auto-categorizar con IA</button>
         <button class="btn ghost" id="btn-select-all">Seleccionar todos</button>
         <button class="btn" id="btn-accept-selected">✓ Aceptar seleccionados</button>
         <button class="btn danger" id="btn-discard-selected">Descartar seleccionados</button>
@@ -278,17 +326,25 @@ table.expenses tr:hover { background: var(--surface-2); }
     </div>
   </section>
 
-  <section class="dashboard">
-    <div class="dashboard-stats">
-      <div class="stat-card"><div class="label">Total del mes</div><div class="value" id="stat-total">$0</div><div class="delta" id="stat-delta">—</div></div>
-      <div class="stat-card"><div class="label">Mes anterior</div><div class="value" id="stat-prev">$0</div><div class="delta flat" id="stat-prev-sub">—</div></div>
-      <div class="stat-card"><div class="label">Promedio diario</div><div class="value" id="stat-avg">$0</div><div class="delta flat" id="stat-avg-sub">—</div></div>
-    </div>
+  <section class="dashboard-stats">
+    <div class="stat-card"><div class="label">Total del mes</div><div class="value" id="stat-total">$0</div><div class="delta" id="stat-delta">—</div></div>
+    <div class="stat-card"><div class="label">Mes anterior</div><div class="value" id="stat-prev">$0</div><div class="delta flat" id="stat-prev-sub">—</div></div>
+    <div class="stat-card"><div class="label">Promedio diario</div><div class="value" id="stat-avg">$0</div><div class="delta flat" id="stat-avg-sub">—</div></div>
+    <div class="stat-card"><div class="label">Proyección del mes</div><div class="value" id="stat-proj">$0</div><div class="delta flat" id="stat-proj-sub">—</div></div>
+  </section>
+
+  <section class="charts-grid">
     <div class="chart-card">
       <div class="chart-head"><h3>Gastos por categoría</h3><input type="month" id="month-picker"></div>
       <div class="chart-wrap"><canvas id="cat-chart"></canvas><div id="chart-empty" class="chart-empty hidden">Sin gastos en este mes.</div></div>
     </div>
+    <div class="chart-card">
+      <div class="chart-head"><h3>Tendencia últimos 6 meses</h3><span class="sub">click en una barra para ver ese mes</span></div>
+      <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+    </div>
   </section>
+
+  <section class="insights hidden" id="insights"></section>
 
   <section class="tc-grid">
     <div class="table-card">
@@ -297,6 +353,7 @@ table.expenses tr:hover { background: var(--surface-2); }
         <div class="filter-group"><label>Categoría</label><select id="f-category"><option value="">Todas</option></select></div>
         <div class="filter-group"><label>Banco</label><select id="f-bank"><option value="">Todos</option></select></div>
         <div class="filter-group"><label>Fuente</label><select id="f-source"><option value="">Todas</option><option value="gmail">Correo</option><option value="upload">Cartola</option></select></div>
+        <button class="btn ghost" id="btn-month-only" title="Mostrar solo gastos del mes seleccionado">📅 Mes</button>
         <button class="btn ghost" id="btn-clear-filters">Limpiar</button>
       </div>
       <div class="table-wrap">
@@ -322,7 +379,7 @@ table.expenses tr:hover { background: var(--surface-2); }
 
     <aside class="chat-card">
       <div class="chat-head">
-        <h3><span class="dot off" id="chat-dot"></span> Pregúntale a Claude</h3>
+        <h3><span class="dot off" id="chat-dot"></span> Asistente IA</h3>
         <button class="btn ghost icon" id="btn-chat-clear" title="Borrar conversación">🗑️</button>
       </div>
       <div class="chat-messages" id="chat-messages"></div>
@@ -347,6 +404,7 @@ table.expenses tr:hover { background: var(--surface-2); }
             <label>Respaldo</label>
             <div class="row">
               <button class="btn" id="btn-export">Exportar JSON</button>
+              <button class="btn" id="btn-export-csv">Exportar CSV</button>
               <label class="btn" style="margin:0; cursor:pointer">Importar JSON<input type="file" id="import-file" accept="application/json,.json" style="display:none"></label>
             </div>
           </div>
@@ -376,7 +434,7 @@ table.expenses tr:hover { background: var(--surface-2); }
 
     <div class="field">
       <label>1. API key de Gemini <span class="sub">(Google AI, gratis)</span></label>
-      <input type="password" id="cred-anthropic" placeholder="AIza...">
+      <input type="password" id="cred-gemini" placeholder="AIza...">
       <div class="hint">Obtén una gratis en <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>. No requiere tarjeta. Login con tu Gmail. Free tier: 1500 llamadas/día.</div>
     </div>
 
@@ -442,36 +500,64 @@ const BANK_PRESETS = ["Banco Edwards","Banco de Chile","Santander","BCI","Itaú"
 
 function defaultState() {
   return {
-    version: 1, bankName: "Banco Edwards", expenses: [], categoryHints: {},
+    version: 3, bankName: "Banco Edwards", expenses: [], categoryHints: {},
     processedEmailIds: [], reviewQueue: [], categories: DEFAULT_CATEGORIES.slice(),
     sync: { senders: ["enviodigital@bancoedwards.cl", "serviciodetransferencias@bancochile.cl"], subjectKeywords: ["Cargo", "Transferencia a Terceros"], windowDays: 30, lastSyncAt: null },
-    ui: { sort: { field: "date", dir: "desc" }, filters: { search: "", category: "", bank: "", source: "" }, month: ymKey(new Date()) },
+    ui: { sort: { field: "date", dir: "desc" }, filters: { search: "", category: "", bank: "", source: "", monthOnly: false }, month: ymKey(new Date()) },
     chat: { messages: [] }
   };
+}
+
+// Merge + sanea + migra cualquier objeto de estado (localStorage o import JSON)
+function mergeState(parsed) {
+  const def = defaultState();
+  const merged = Object.assign({}, def, parsed, {
+    sync: Object.assign({}, def.sync, parsed.sync || {}),
+    ui: Object.assign({}, def.ui, parsed.ui || {}, { filters: Object.assign({}, def.ui.filters, (parsed.ui && parsed.ui.filters) || {}), sort: Object.assign({}, def.ui.sort, (parsed.ui && parsed.ui.sort) || {}) }),
+    chat: Object.assign({}, def.chat, parsed.chat || {})
+  });
+  ["expenses", "reviewQueue", "processedEmailIds", "categories"].forEach(k => { if (!Array.isArray(merged[k])) merged[k] = def[k]; });
+  if (!merged.categoryHints || typeof merged.categoryHints !== "object") merged.categoryHints = {};
+  if (!Array.isArray(merged.sync.senders)) merged.sync.senders = def.sync.senders;
+  if (!Array.isArray(merged.sync.subjectKeywords)) merged.sync.subjectKeywords = def.sync.subjectKeywords;
+  // Migration v2: add transfer sender + keyword if user has only old single defaults (no customization)
+  if (merged.sync.senders.length === 1 && merged.sync.senders[0] === "enviodigital@bancoedwards.cl") {
+    merged.sync.senders.push("serviciodetransferencias@bancochile.cl");
+  }
+  if (merged.sync.subjectKeywords.length === 1 && merged.sync.subjectKeywords[0] === "Cargo") {
+    merged.sync.subjectKeywords.push("Transferencia a Terceros");
+  }
+  // Migration v3: dedupe sin banco — el LLM asignaba a veces "Banco de Chile" y a veces
+  // "Banco Edwards" al mismo correo, duplicando el gasto. Conserva el primero.
+  if ((merged.version || 1) < 3) {
+    const seen = new Map();
+    merged.expenses = merged.expenses.filter(e => {
+      const k = dedupeKey(e);
+      const prev = seen.get(k);
+      if (!prev) { seen.set(k, e); return true; }
+      if (!prev.category && e.category) prev.category = e.category;
+      if (!prev.note && e.note) prev.note = e.note;
+      return false;
+    });
+    merged.reviewQueue = merged.reviewQueue.filter(e => !seen.has(dedupeKey(e)));
+    merged.version = 3;
+  }
+  return merged;
 }
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    const def = defaultState();
-    const merged = Object.assign({}, def, parsed, {
-      sync: Object.assign({}, def.sync, parsed.sync || {}),
-      ui: Object.assign({}, def.ui, parsed.ui || {}, { filters: Object.assign({}, def.ui.filters, (parsed.ui && parsed.ui.filters) || {}), sort: Object.assign({}, def.ui.sort, (parsed.ui && parsed.ui.sort) || {}) }),
-      chat: Object.assign({}, def.chat, parsed.chat || {})
-    });
-    // Migration v2: add transfer sender + keyword if user has only old single defaults (no customization)
-    if (Array.isArray(merged.sync.senders) && merged.sync.senders.length === 1 && merged.sync.senders[0] === "enviodigital@bancoedwards.cl") {
-      merged.sync.senders.push("serviciodetransferencias@bancochile.cl");
-    }
-    if (Array.isArray(merged.sync.subjectKeywords) && merged.sync.subjectKeywords.length === 1 && merged.sync.subjectKeywords[0] === "Cargo") {
-      merged.sync.subjectKeywords.push("Transferencia a Terceros");
-    }
-    return merged;
+    return mergeState(JSON.parse(raw));
   } catch (e) { return defaultState(); }
 }
-function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
+function saveState() {
+  try {
+    if (state.processedEmailIds.length > 3000) state.processedEmailIds = state.processedEmailIds.slice(-3000);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {}
+}
 
 function loadCreds() { try { return JSON.parse(localStorage.getItem(CREDS_KEY)) || {}; } catch { return {}; } }
 function saveCreds() { localStorage.setItem(CREDS_KEY, JSON.stringify(creds)); }
@@ -479,8 +565,11 @@ function saveCreds() { localStorage.setItem(CREDS_KEY, JSON.stringify(creds)); }
 let state = loadState();
 let creds = loadCreds();
 let tokenClient = null;
+let pendingTokenReject = null;
+let gsiRetries = 0;
 let chatInFlight = false, syncInFlight = false, categorizeInFlight = false;
-let catChart = null;
+let catChart = null, trendChart = null;
+let recurringSet = new Set();
 const selectedReview = new Set();
 let editingExpenseId = null, noteEditingId = null;
 
@@ -536,34 +625,109 @@ function parseAmount(s) {
 const CLPfmt = new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 });
 function fmtCLP(n) { if (n == null || isNaN(n)) return "$0"; return CLPfmt.format(Math.round(n)); }
 function ymKey(d) { const dd = (d instanceof Date) ? d : new Date(d); return dd.getFullYear() + "-" + String(dd.getMonth()+1).padStart(2,"0"); }
-function dedupeKey(e) { return (e.date || "") + "|" + (e.amount || 0) + "|" + String(e.description || "").trim().toLowerCase() + "|" + (e.bank || ""); }
+function normDesc(s) { return String(s || "").trim().toLowerCase().replace(/\s+/g, " "); }
+// Sin banco a propósito: el LLM asigna nombres de banco inconsistentes al mismo correo
+function dedupeKey(e) { return (e.date || "") + "|" + (e.amount || 0) + "|" + normDesc(e.description); }
+function canonicalBank(b) {
+  const t = normDesc(b);
+  if (!t) return "";
+  if (t.indexOf("edwards") >= 0) return "Banco Edwards";
+  if (t.indexOf("santander") >= 0) return "Santander";
+  if (t.indexOf("bci") >= 0) return "BCI";
+  if (t.indexOf("ita") >= 0) return "Itaú";
+  if (t.indexOf("estado") >= 0) return "BancoEstado";
+  if (t.indexOf("falabella") >= 0) return "Falabella";
+  if (t.indexOf("chile") >= 0) return "Banco de Chile";
+  return String(b).trim();
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+const MONTHS_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function isValidExpense(e) { return e && typeof e.amount === "number" && e.amount > 0 && typeof e.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && typeof e.description === "string" && e.description.trim().length > 0; }
-function relTime(iso) { if (!iso) return "nunca"; const t = new Date(iso).getTime(); if (isNaN(t)) return "—"; const diff = (Date.now() - t) / 1000; if (diff < 60) return "hace " + Math.floor(diff) + "s"; if (diff < 3600) return "hace " + Math.floor(diff/60) + " min"; if (diff < 86400) return "hace " + Math.floor(diff/3600) + " h"; return "hace " + Math.floor(diff/86400) + " días"; }
+function relTime(iso) {
+  if (!iso) return "nunca";
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return "—";
+  let diff = (Date.now() - t) / 1000;
+  const pre = diff < 0 ? "en " : "hace ";
+  diff = Math.abs(diff);
+  if (diff < 60) return pre + Math.floor(diff) + " s";
+  if (diff < 3600) return pre + Math.floor(diff / 60) + " min";
+  if (diff < 86400) return pre + Math.floor(diff / 3600) + " h";
+  return pre + Math.floor(diff / 86400) + " días";
+}
 function escapeHtml(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]); }
+// Markdown mínimo para las respuestas del chat (negrita y código inline); escapa todo primero
+function mdLite(s) {
+  let t = escapeHtml(s);
+  t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  t = t.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
+  return t;
+}
+
+// ============================================================
+// Theme (claro/oscuro)
+// ============================================================
+const THEME_KEY = "panel_gastos_theme";
+function applyTheme() {
+  const pref = localStorage.getItem(THEME_KEY);
+  const dark = pref ? pref === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  const btn = document.getElementById("btn-theme");
+  if (btn) { btn.textContent = dark ? "☀️" : "🌙"; }
+}
+function toggleTheme() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  localStorage.setItem(THEME_KEY, dark ? "light" : "dark");
+  applyTheme();
+  renderDashboard(); // los charts leen colores del tema
+}
 
 // ============================================================
 // Gemini API (direct from browser, free tier)
+// Reintenta con backoff en errores transitorios (429/500/503) y
+// cae a un modelo alternativo si el primario está saturado o retirado.
 // ============================================================
-async function askClaude(prompt) {
+const LLM_MODELS = [GEMINI_MODEL, "gemini-2.5-flash", "gemini-2.0-flash"];
+function friendlyLLMError(status, txt) {
+  if (status === 429) return "Gemini alcanzó su límite de uso (429). Espera un minuto y reintenta.";
+  if (status === 503) return "Gemini está saturado (503). Reintenta en un momento.";
+  if (status === 400 || status === 401 || status === 403) return "API key de Gemini inválida o sin permisos (" + status + "). Revísala en ⚙️ Configurar.";
+  if (status === 404) return "El modelo de Gemini ya no está disponible (404).";
+  return "Gemini API " + status + ": " + String(txt || "").slice(0, 200);
+}
+async function askLLM(prompt, opts) {
   if (!creds.geminiKey) throw new Error("Falta API key de Gemini");
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-goog-api-key": creds.geminiKey
-    },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 8192, temperature: 0.2 }
-    })
-  });
-  if (!resp.ok) {
-    const txt = await resp.text();
-    throw new Error("Gemini API " + resp.status + ": " + txt.slice(0, 300));
+  const gen = { maxOutputTokens: 8192, temperature: 0.2 };
+  if (opts && opts.json) gen.responseMimeType = "application/json";
+  let lastErr = null;
+  for (const model of LLM_MODELS) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let resp;
+      try {
+        resp = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": creds.geminiKey },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: gen })
+        });
+      } catch (e) {
+        lastErr = new Error("Sin conexión con la API de Gemini. Revisa tu internet.");
+        await sleep(800 * (attempt + 1));
+        continue;
+      }
+      if (resp.ok) return await resp.json();
+      const txt = await resp.text().catch(() => "");
+      lastErr = new Error(friendlyLLMError(resp.status, txt));
+      if (resp.status === 429 || resp.status === 500 || resp.status === 503) {
+        if (attempt < 2) { await sleep(1200 * Math.pow(2, attempt) + Math.random() * 400); continue; }
+        break; // reintentos agotados: probar el siguiente modelo
+      }
+      if (resp.status === 404) break; // modelo retirado: probar el siguiente
+      throw lastErr; // 400/401/403: reintentar no sirve
+    }
   }
-  return await resp.json();
+  throw lastErr || new Error("La IA no respondió.");
 }
 
 // ============================================================
@@ -572,13 +736,24 @@ async function askClaude(prompt) {
 function initGoogleClient() {
   if (!creds.googleClientId) return;
   if (!window.google || !window.google.accounts) {
-    setTimeout(initGoogleClient, 500);
+    if (gsiRetries++ < 60) setTimeout(initGoogleClient, 500);
+    else console.warn("Google Identity Services no cargó (¿bloqueador de anuncios?)");
     return;
   }
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: creds.googleClientId,
     scope: GMAIL_SCOPE,
-    callback: () => {} // overwritten per-request
+    callback: () => {}, // overwritten per-request
+    error_callback: (err) => {
+      const r = pendingTokenReject; pendingTokenReject = null;
+      if (!r) return;
+      const type = (err && err.type) || "";
+      r(new Error(type === "popup_failed_to_open"
+        ? "El navegador bloqueó el popup de Google. Permite popups para este sitio y usa 'Conectar Gmail' en ⚙️."
+        : type === "popup_closed"
+          ? "Cerraste el popup de Google antes de autorizar. Usa 'Conectar Gmail' en ⚙️."
+          : "Google OAuth: " + (type || "error desconocido")));
+    }
   });
 }
 
@@ -589,8 +764,15 @@ function gmailTokenValid() {
 function requestGmailToken(promptMode) {
   return new Promise((resolve, reject) => {
     if (!tokenClient) { initGoogleClient(); }
-    if (!tokenClient) return reject(new Error("Google Identity no inicializado"));
+    if (!tokenClient) return reject(new Error("Google Identity no está listo (¿bloqueador de anuncios?). Recarga la página."));
+    // Nunca dejar la promesa colgada: si Google no responde en 2 min, rechazar
+    const timeout = setTimeout(() => {
+      pendingTokenReject = null;
+      reject(new Error("Google no respondió. Usa 'Conectar Gmail' en ⚙️ y autoriza en el popup."));
+    }, 120000);
+    pendingTokenReject = (err) => { clearTimeout(timeout); reject(err); };
     tokenClient.callback = (resp) => {
+      clearTimeout(timeout); pendingTokenReject = null;
       if (resp.error) return reject(new Error("OAuth: " + resp.error));
       creds.gmailAccessToken = resp.access_token;
       creds.gmailTokenExpiry = Date.now() + (parseInt(resp.expires_in, 10) || 3600) * 1000;
@@ -599,7 +781,7 @@ function requestGmailToken(promptMode) {
       resolve(resp.access_token);
     };
     try { tokenClient.requestAccessToken({ prompt: promptMode || "" }); }
-    catch (e) { reject(e); }
+    catch (e) { clearTimeout(timeout); pendingTokenReject = null; reject(e); }
   });
 }
 
@@ -614,27 +796,38 @@ async function gmailFetch(url) {
   return r.json();
 }
 
-async function gmailSearchMessages(query, maxResults) {
-  const list = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?q=" + encodeURIComponent(query) + "&maxResults=" + (maxResults || 50));
-  const ids = (list.messages || []).map(m => m.id);
+// Lista TODOS los IDs que calzan con la query, paginando (antes solo leía los 50 más nuevos)
+async function gmailListIds(query, cap) {
+  const max = cap || 300;
+  let ids = [], pageToken = null;
+  do {
+    const url = "https://gmail.googleapis.com/gmail/v1/users/me/messages?q=" + encodeURIComponent(query) + "&maxResults=100" + (pageToken ? "&pageToken=" + encodeURIComponent(pageToken) : "");
+    const list = await gmailFetch(url);
+    ids = ids.concat((list.messages || []).map(m => m.id));
+    pageToken = list.nextPageToken || null;
+  } while (pageToken && ids.length < max);
+  return ids.slice(0, max);
+}
+
+// Baja mensajes en lotes de 5. format "metadata" = solo headers+snippet (barato,
+// para filtrar por asunto); "full" = cuerpo completo (solo para los candidatos).
+async function gmailGetMessages(ids, format) {
   const msgs = [];
-  // Fetch in series of 5 to avoid rate limits — format=full so we can extract body for emails where snippet is insufficient
   for (let i = 0; i < ids.length; i += 5) {
-    const batch = ids.slice(i, i+5);
+    const batch = ids.slice(i, i + 5);
     const fetched = await Promise.all(batch.map(async id => {
       try {
-        const m = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + id + "?format=full");
+        const extra = format === "metadata" ? "&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date" : "";
+        const m = await gmailFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + id + "?format=" + format + extra);
         const headers = (m.payload && m.payload.headers) || [];
         const h = name => (headers.find(h => h.name.toLowerCase() === name.toLowerCase()) || {}).value || "";
-        const bodyText = extractBodyText(m.payload);
         return {
           id: m.id,
           snippet: m.snippet || "",
-          bodyText: (bodyText || "").slice(0, 4000),
+          bodyText: format === "full" ? (extractBodyText(m.payload) || "").slice(0, 4000) : "",
           subject: h("Subject"),
           sender: h("From"),
-          date: h("Date") || (m.internalDate ? new Date(parseInt(m.internalDate, 10)).toISOString() : ""),
-          labelIds: m.labelIds || []
+          date: h("Date") || (m.internalDate ? new Date(parseInt(m.internalDate, 10)).toISOString() : "")
         };
       } catch (e) { console.error("gmail fetch err", e); return null; }
     }));
@@ -651,7 +844,7 @@ function updateGmailStatus() {
   else if (creds.geminiKey && creds.googleClientId) { chip.className = "chip disconnected"; chip.textContent = "⚠ Conectar Gmail"; }
   else { chip.className = "chip disconnected"; chip.textContent = "⚙️ Configurar"; }
   if (status) {
-    if (gmailTokenValid()) status.textContent = "✓ Conectado, expira " + relTime(new Date(creds.gmailTokenExpiry).toISOString()).replace("hace", "en");
+    if (gmailTokenValid()) status.textContent = "✓ Conectado, expira " + relTime(new Date(creds.gmailTokenExpiry).toISOString());
     else if (creds.gmailAccessToken) status.textContent = "Token expirado, reconecta";
     else status.textContent = "No conectado";
   }
@@ -759,6 +952,7 @@ function stripHtml(html) {
     "ordm":"º","ordf":"ª","bull":"•","mdash":"—","ndash":"–","hellip":"…","copy":"©","reg":"®" };
   t = t.replace(/&([a-zA-Z]+);/g, (m, name) => ents[name] != null ? ents[name] : m);
   t = t.replace(/&#(\d+);/g, (m, n) => String.fromCharCode(parseInt(n, 10)));
+  t = t.replace(/&#x([0-9a-f]+);/gi, (m, n) => String.fromCharCode(parseInt(n, 16)));
   t = t.replace(/[ \t]+/g, " ").replace(/\n[ \t]+/g, "\n").replace(/\n{2,}/g, "\n");
   return t.trim();
 }
@@ -804,38 +998,53 @@ async function runSync() {
   toastSync("success", "Buscando correos en Gmail...");
 
   try {
-    const messages = await gmailSearchMessages(query, 50);
-    const totalFound = messages.length;
-    const keywords = (state.sync.subjectKeywords || []).map(k => String(k).toLowerCase());
-    const candidates = messages.filter(m => {
-      if (!m.id || state.processedEmailIds.indexOf(m.id) >= 0) return false;
-      const subj = String(m.subject || "").toLowerCase();
-      if (keywords.length && !keywords.some(k => subj.indexOf(k) >= 0)) return false;
-      return true;
-    }).map(m => ({ email_id: m.id, subject: m.subject || "", body: (m.bodyText && m.bodyText.length > 50) ? m.bodyText : (m.snippet || ""), date: m.date || "" }));
+    // Fase 1: listar IDs (con paginación) y descartar los ya procesados sin descargarlos
+    const processed = new Set(state.processedEmailIds);
+    const allIds = await gmailListIds(query, 300);
+    const newIds = allIds.filter(id => !processed.has(id));
 
-    if (!candidates.length) {
+    if (!newIds.length) {
       state.sync.lastSyncAt = new Date().toISOString();
       saveState(); renderHeader(); renderSyncMeta();
-      const reason = totalFound === 0
+      const reason = allIds.length === 0
         ? ("✓ No hay correos de " + (state.sync.senders || []).join(", ") + " en los últimos " + (state.sync.windowDays || 30) + " días. Aumenta la ventana en ⚙️ Ajustes.")
-        : ("✓ " + totalFound + " correos encontrados, todos ya procesados o sin keyword en el asunto (" + (state.sync.subjectKeywords || []).join(", ") + ").");
+        : ("✓ " + allIds.length + " correos encontrados, todos ya procesados. Para releerlos usa '↻ Re-procesar' en ⚙️ Ajustes.");
       toastSync("success", reason); clearToastLater();
       return;
     }
 
-    toastSync("success", "Procesando " + candidates.length + " de " + totalFound + " correos con Claude...");
+    // Fase 2: bajar solo headers para filtrar por asunto
+    toastSync("success", "Revisando " + newIds.length + " correos nuevos...");
+    const metas = await gmailGetMessages(newIds, "metadata");
+    const keywords = (state.sync.subjectKeywords || []).map(k => String(k).toLowerCase());
+    const matchIds = metas.filter(m => {
+      const subj = String(m.subject || "").toLowerCase();
+      return !keywords.length || keywords.some(k => subj.indexOf(k) >= 0);
+    }).map(m => m.id);
+
+    if (!matchIds.length) {
+      state.sync.lastSyncAt = new Date().toISOString();
+      saveState(); renderHeader(); renderSyncMeta();
+      toastSync("success", "✓ " + newIds.length + " correos nuevos, pero ninguno con keyword en el asunto (" + (state.sync.subjectKeywords || []).join(", ") + ").");
+      clearToastLater();
+      return;
+    }
+
+    // Fase 3: bajar el cuerpo completo solo de los que calzan y extraer con la IA
+    const fulls = await gmailGetMessages(matchIds, "full");
+    const candidates = fulls.map(m => ({ email_id: m.id, subject: m.subject || "", body: (m.bodyText && m.bodyText.length > 50) ? m.bodyText : (m.snippet || ""), date: m.date || "" }));
+    toastSync("success", "Procesando " + candidates.length + " correos con la IA...");
 
     const out = [];
     let llmErrors = 0, llmEmpty = 0;
     for (let i = 0; i < candidates.length; i += 20) {
       const batch = candidates.slice(i, i+20);
       try {
-        const result = await askClaude(emailExtractionPrompt(batch, state.bankName));
+        const result = await askLLM(emailExtractionPrompt(batch, state.bankName), { json: true });
         const text = getResponseText(result);
         const parsed = parseJsonFromText(text);
         if (Array.isArray(parsed)) out.push(...parsed); else { llmEmpty++; console.warn("LLM output unparseable:", text); }
-      } catch (e) { llmErrors++; console.error("askClaude err", e); }
+      } catch (e) { llmErrors++; console.error("askLLM err", e); }
     }
 
     let accepted = 0, queued = 0, dup = 0, skipped = 0;
@@ -845,7 +1054,7 @@ async function runSync() {
         id: uid(), date: normalizeDate(item.date),
         amount: typeof item.amount === "number" ? Math.round(item.amount) : parseAmount(item.amount),
         description: String(item.description || "").trim(), note: "", category: item.category || null,
-        bank: item.bank || state.bankName, account: item.account_last4 ? "****" + item.account_last4 : "",
+        bank: canonicalBank(item.bank) || state.bankName, account: item.account_last4 ? "****" + item.account_last4 : "",
         source: "gmail", emailId: item.email_id || null, createdAt: new Date().toISOString()
       };
       if (!isValidExpense(norm)) { skipped++; return; }
@@ -892,9 +1101,9 @@ async function processUpload() {
   categorizeInFlight = true;
   const btn = document.getElementById("btn-upload-process");
   btn.disabled = true; btn.textContent = "Procesando...";
-  status.textContent = "Pidiéndole a Claude que extraiga los gastos...";
+  status.textContent = "Pidiéndole a la IA que extraiga los gastos...";
   try {
-    const result = await askClaude(statementParsePrompt(text, bank));
+    const result = await askLLM(statementParsePrompt(text, bank), { json: true });
     const out = parseJsonFromText(getResponseText(result));
     if (!Array.isArray(out)) { status.textContent = "❌ No pude extraer gastos."; return; }
     let accepted = 0, queued = 0, dup = 0, skipped = 0;
@@ -904,7 +1113,7 @@ async function processUpload() {
         id: uid(), date: normalizeDate(item.date),
         amount: typeof item.amount === "number" ? Math.round(item.amount) : parseAmount(item.amount),
         description: String(item.description || "").trim(), note: "", category: item.category || null,
-        bank: item.bank || bank, account: item.account_last4 ? "****" + item.account_last4 : "",
+        bank: canonicalBank(item.bank) || bank, account: item.account_last4 ? "****" + item.account_last4 : "",
         source: "upload", emailId: null, createdAt: new Date().toISOString()
       };
       if (!isValidExpense(norm)) { skipped++; return; }
@@ -923,7 +1132,7 @@ async function processUpload() {
     document.getElementById("upload-text").value = "";
     document.getElementById("upload-file").value = "";
   } catch (e) { status.textContent = "❌ " + (e.message || e); }
-  finally { categorizeInFlight = false; btn.disabled = false; btn.textContent = "Procesar con Claude"; }
+  finally { categorizeInFlight = false; btn.disabled = false; btn.textContent = "Procesar con IA"; }
 }
 
 // ============================================================
@@ -989,7 +1198,7 @@ async function autoCategorize() {
   try {
     const payload = pending.map(e => ({ id: e.id, description: e.description, amount: e.amount }));
     const prompt = "Eres experto en finanzas personales chilenas. Asigna a cada gasto la mejor categoría.\nCategorías: " + JSON.stringify(state.categories) + ".\nGASTOS:\n" + JSON.stringify(payload) + '\nDevuelve SOLO array JSON: [{"id":"...","category":"..."}]';
-    const result = await askClaude(prompt);
+    const result = await askLLM(prompt, { json: true });
     const out = parseJsonFromText(getResponseText(result));
     if (!Array.isArray(out)) { toastSync("error", "No pude auto-categorizar."); return; }
     let n = 0;
@@ -1000,7 +1209,7 @@ async function autoCategorize() {
     saveState(); renderReview();
     toastSync("success", "✨ Categorizados " + n + " items.");
   } catch (e) { toastSync("error", "Error: " + (e.message || e)); }
-  finally { btn.disabled = false; btn.textContent = "✨ Auto-categorizar con Claude"; }
+  finally { btn.disabled = false; btn.textContent = "✨ Auto-categorizar con IA"; }
 }
 
 // ============================================================
@@ -1042,12 +1251,22 @@ function renderDashboard() {
     deltaEl.textContent = sign + Math.abs(pct).toFixed(1) + "% vs mes anterior";
   } else { deltaEl.className = "delta flat"; deltaEl.textContent = "Sin datos de mes anterior"; }
   const now = new Date(); const currentYm = ymKey(now);
-  let dayCount = 30;
-  if (ym === currentYm) dayCount = Math.max(1, now.getDate());
-  else dayCount = new Date(y, m, 0).getDate();
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const dayCount = ym === currentYm ? Math.max(1, now.getDate()) : daysInMonth;
   document.getElementById("stat-avg").textContent = fmtCLP(tot / dayCount);
   document.getElementById("stat-avg-sub").textContent = "sobre " + dayCount + " días";
+  const projEl = document.getElementById("stat-proj"), projSub = document.getElementById("stat-proj-sub");
+  if (ym === currentYm && now.getDate() < daysInMonth) {
+    projEl.textContent = fmtCLP((tot / dayCount) * daysInMonth);
+    projSub.textContent = "estimado a fin de mes, a este ritmo";
+  } else {
+    projEl.textContent = fmtCLP(tot);
+    projSub.textContent = "mes cerrado";
+  }
+  if (typeof Chart !== "undefined") Chart.defaults.color = cssVar("--text-muted");
   renderCategoryChart(ym);
+  renderTrendChart(ym);
+  renderInsights(ym);
 }
 function renderCategoryChart(ym) {
   const ctx = document.getElementById("cat-chart");
@@ -1064,9 +1283,93 @@ function renderCategoryChart(ym) {
   if (typeof Chart === "undefined") return;
   catChart = new Chart(ctx, {
     type: "doughnut",
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: "#fff" }] },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: cssVar("--surface") }] },
     options: { responsive: true, maintainAspectRatio: false, cutout: "60%", plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 }, padding: 8 } }, tooltip: { callbacks: { label: ctx => ctx.label + ": " + fmtCLP(ctx.parsed) } } } }
   });
+}
+function renderTrendChart(ym) {
+  const ctx = document.getElementById("trend-chart");
+  if (!ctx || typeof Chart === "undefined") return;
+  const [y, m] = ym.split("-").map(Number);
+  const months = [];
+  for (let i = 5; i >= 0; i--) months.push(ymKey(new Date(y, m - 1 - i, 1)));
+  const totals = months.map(totalForMonth);
+  const labels = months.map(k => { const p = k.split("-").map(Number); return MONTHS_ES[p[1] - 1] + " " + String(p[0]).slice(2); });
+  const primary = cssVar("--primary");
+  const colors = months.map(k => k === ym ? primary : primary + "55");
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [{ data: totals, backgroundColor: colors, borderRadius: 6, maxBarThickness: 48 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      onClick: (ev, els) => {
+        if (!els.length) return;
+        state.ui.month = months[els[0].index];
+        saveState(); renderHeader(); renderDashboard(); renderTable();
+      },
+      onHover: (ev, els) => { ev.native.target.style.cursor = els.length ? "pointer" : "default"; },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmtCLP(c.parsed.y) } } },
+      scales: {
+        y: { ticks: { callback: v => v >= 1000000 ? "$" + (v / 1000000).toFixed(1) + "M" : "$" + Math.round(v / 1000) + "k" }, grid: { color: cssVar("--border") } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+// Un gasto es "recurrente" si la misma descripción aparece en 2+ meses con montos similares (±15%)
+function detectRecurring() {
+  const byDesc = {};
+  state.expenses.forEach(e => {
+    if (!e.date || !e.amount) return;
+    const k = normDesc(e.description);
+    if (!k) return;
+    (byDesc[k] = byDesc[k] || []).push(e);
+  });
+  const rec = new Set();
+  Object.keys(byDesc).forEach(k => {
+    const list = byDesc[k];
+    const months = new Set(list.map(e => e.date.slice(0, 7)));
+    if (months.size < 2) return;
+    const amts = list.map(e => e.amount);
+    const avg = amts.reduce((a, b) => a + b, 0) / amts.length;
+    if (avg > 0 && Math.max.apply(null, amts.map(a => Math.abs(a - avg))) / avg <= 0.15) rec.add(k);
+  });
+  return rec;
+}
+function renderInsights(ym) {
+  const box = document.getElementById("insights");
+  if (!box) return;
+  const list = state.expenses.filter(e => e.date && e.date.startsWith(ym));
+  const items = [];
+  if (list.length) {
+    const byDesc = {};
+    list.forEach(e => { const k = normDesc(e.description); const o = byDesc[k] = byDesc[k] || { name: e.description, sum: 0, n: 0 }; o.sum += e.amount || 0; o.n++; });
+    const top = Object.values(byDesc).sort((a, b) => b.sum - a.sum)[0];
+    if (top) items.push({ ico: "🏪", label: "Top comercio del mes", value: top.name, sub: fmtCLP(top.sum) + " en " + top.n + (top.n === 1 ? " movimiento" : " movimientos") });
+    const max = list.slice().sort((a, b) => (b.amount || 0) - (a.amount || 0))[0];
+    if (max) items.push({ ico: "💥", label: "Mayor gasto", value: fmtCLP(max.amount), sub: max.description + " · " + max.date });
+    const p = ym.split("-").map(Number);
+    const prevYm = ymKey(new Date(p[0], p[1] - 2, 1));
+    const byCat = {}, byCatPrev = {};
+    state.expenses.forEach(e => {
+      if (!e.date) return;
+      const c = e.category || "Sin categoría";
+      if (e.date.startsWith(ym)) byCat[c] = (byCat[c] || 0) + (e.amount || 0);
+      else if (e.date.startsWith(prevYm)) byCatPrev[c] = (byCatPrev[c] || 0) + (e.amount || 0);
+    });
+    let riser = null;
+    Object.keys(byCat).forEach(c => { const d = byCat[c] - (byCatPrev[c] || 0); if (d > 0 && (!riser || d > riser.d)) riser = { c: c, d: d }; });
+    if (riser && Object.keys(byCatPrev).length) items.push({ ico: "📈", label: "Categoría que más subió", value: riser.c, sub: "+" + fmtCLP(riser.d) + " vs mes anterior" });
+    const recs = list.filter(e => recurringSet.has(normDesc(e.description)));
+    if (recs.length) {
+      const uniq = new Set(recs.map(e => normDesc(e.description)));
+      items.push({ ico: "🔁", label: "Gastos recurrentes", value: fmtCLP(recs.reduce((a, b) => a + (b.amount || 0), 0)), sub: uniq.size + (uniq.size === 1 ? " pago fijo detectado" : " pagos fijos detectados") + " este mes" });
+    }
+  }
+  if (!items.length) { box.classList.add("hidden"); box.innerHTML = ""; return; }
+  box.classList.remove("hidden");
+  box.innerHTML = items.map(it => '<div class="insight"><span class="ico">' + it.ico + '</span><div><div class="it-label">' + escapeHtml(it.label) + '</div><div class="it-value" title="' + escapeHtml(it.value) + '">' + escapeHtml(it.value) + '</div><div class="it-sub">' + escapeHtml(it.sub) + '</div></div></div>').join("");
 }
 function renderReview() {
   const card = document.getElementById("review-card");
@@ -1097,7 +1400,9 @@ function renderReview() {
 function applyFilters(list) {
   const f = state.ui.filters;
   const q = (f.search || "").trim().toLowerCase();
+  const ymFilter = state.ui.month || ymKey(new Date());
   return list.filter(e => {
+    if (f.monthOnly && !(e.date && e.date.startsWith(ymFilter))) return false;
     if (f.category && e.category !== f.category) return false;
     if (f.bank && e.bank !== f.bank) return false;
     if (f.source && e.source !== f.source) return false;
@@ -1125,6 +1430,11 @@ function renderTable() {
     const el = document.getElementById("si-" + f);
     if (el) el.textContent = state.ui.sort.field === f ? (state.ui.sort.dir === "asc" ? "▲" : "▼") : "";
   });
+  const moBtn = document.getElementById("btn-month-only");
+  if (moBtn) {
+    moBtn.textContent = "📅 " + (state.ui.month || ymKey(new Date()));
+    moBtn.classList.toggle("toggled", !!state.ui.filters.monthOnly);
+  }
   const filtered = sortList(applyFilters(state.expenses));
   const body = document.getElementById("expenses-body"); const empty = document.getElementById("empty-table");
   if (!filtered.length) {
@@ -1134,10 +1444,11 @@ function renderTable() {
     empty.classList.add("hidden");
     body.innerHTML = filtered.map(e => {
       const cat = e.category ? '<span class="tag cat" data-id="' + e.id + '" data-action="cat">' + escapeHtml(e.category) + '</span>' : '<span class="tag cat empty" data-id="' + e.id + '" data-action="cat">+ asignar</span>';
+      const recur = recurringSet.has(normDesc(e.description)) ? ' <span class="tag recur" title="Gasto recurrente: se repite todos los meses con monto similar">🔁</span>' : '';
       const noteRow = e.note ? '<div class="row-note">' + escapeHtml(e.note) + '</div>' : '';
       const acct = e.account ? '<div class="sub">' + escapeHtml(e.account) + '</div>' : '';
       const srcLabel = e.source === "gmail" ? "Correo" : (e.source === "upload" ? "Cartola" : "—");
-      return '<tr data-id="' + e.id + '"><td>' + escapeHtml(e.date) + '</td><td><div>' + escapeHtml(e.description) + '</div>' + acct + noteRow + '</td><td>' + cat + '</td><td><span class="tag">' + escapeHtml(e.bank || "") + '</span></td><td><span class="tag">' + srcLabel + '</span></td><td class="amt">' + fmtCLP(e.amount) + '</td><td><div class="row-actions"><button data-id="' + e.id + '" data-action="note" title="Editar nota">✎</button><button data-id="' + e.id + '" data-action="delete" title="Borrar">🗑</button></div></td></tr>';
+      return '<tr data-id="' + e.id + '"><td>' + escapeHtml(e.date) + '</td><td><div>' + escapeHtml(e.description) + recur + '</div>' + acct + noteRow + '</td><td>' + cat + '</td><td><span class="tag">' + escapeHtml(e.bank || "") + '</span></td><td><span class="tag">' + srcLabel + '</span></td><td class="amt">' + fmtCLP(e.amount) + '</td><td><div class="row-actions"><button data-id="' + e.id + '" data-action="note" title="Editar nota">✎</button><button data-id="' + e.id + '" data-action="delete" title="Borrar">🗑</button></div></td></tr>';
     }).join("");
   }
   const total = filtered.reduce((a,b) => a + (b.amount||0), 0);
@@ -1167,14 +1478,19 @@ function renderChat() {
     Array.from(msgs.querySelectorAll(".chat-suggestion")).forEach(b => b.addEventListener("click", () => { document.getElementById("chat-input").value = b.dataset.q; sendChat(); }));
     return;
   }
-  msgs.innerHTML = list.map(m => { const cls = m.role === "user" ? "user" : (m.role === "error" ? "bot error" : "bot"); return '<div class="bubble ' + cls + '">' + escapeHtml(m.content) + '</div>'; }).join("");
+  msgs.innerHTML = list.map(m => {
+    const cls = m.role === "user" ? "user" : (m.role === "error" ? "bot error" : "bot");
+    const html = m.role === "assistant" ? mdLite(m.content) : escapeHtml(m.content);
+    return '<div class="bubble ' + cls + '">' + html + '</div>';
+  }).join("");
   if (chatInFlight) msgs.innerHTML += '<div class="bubble bot"><span class="typing"><span></span><span></span><span></span></span></div>';
   requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
 }
 function chatSystemPrompt(question) {
   const ym = state.ui.month || ymKey(new Date());
   const today = new Date().toISOString().slice(0,10);
-  const exp = state.expenses.slice(-500);
+  // Formato compacto para gastar ~60% menos tokens que el objeto completo
+  const exp = state.expenses.slice(-800).map(e => ({ f: e.date, d: e.description, m: e.amount, c: e.category || null, b: e.bank || null, n: e.note || undefined }));
   const history = (state.chat.messages || []).slice(-10).map(m => (m.role === "user" ? "Usuario" : "Asistente") + ": " + m.content).join("\n");
   return [
     "Eres un asistente financiero personal. El usuario es chileno y todos los montos están en CLP.", "",
@@ -1183,12 +1499,13 @@ function chatSystemPrompt(question) {
     "REGLAS DE RESPUESTA:",
     "- Responde SIEMPRE en español, breve y directo. Sin saludos ni preámbulos.",
     "- Formato de monto: \"$12.345\" (punto como separador de miles).",
-    "- Para buscar un comercio (ej: \"Uber\"), usa substring case-insensitive sobre \"description\".",
+    "- Para buscar un comercio (ej: \"Uber\"), usa substring case-insensitive sobre el campo \"d\".",
     "- \"Este mes\" = year-month " + ym + ". \"Mes pasado\" = el anterior.",
     "- Si no hay datos relevantes, dilo: no inventes.",
     "- Lista movimientos individuales con guión (fecha, descripción, monto) cuando tenga sentido.",
-    "- Muestra el total al final cuando agregues sumas.", "",
-    "DATOS (JSON con todos los gastos):", JSON.stringify(exp), "",
+    "- Muestra el total al final cuando agregues sumas.",
+    "- Puedes usar **negrita** para destacar montos o conclusiones.", "",
+    "DATOS (JSON; campos: f=fecha, d=descripción/comercio, m=monto CLP, c=categoría, b=banco, n=nota):", JSON.stringify(exp), "",
     "CONVERSACIÓN PREVIA:", history || "(ninguna)", "",
     "PREGUNTA DEL USUARIO:", question, "",
     "Responde directamente, sin saludos:"
@@ -1206,7 +1523,7 @@ async function sendChat() {
   chatInFlight = true; saveState(); renderChat();
   document.getElementById("btn-chat-send").disabled = true; document.getElementById("chat-input").disabled = true;
   try {
-    const result = await askClaude(chatSystemPrompt(text));
+    const result = await askLLM(chatSystemPrompt(text));
     const reply = getResponseText(result) || "(sin respuesta)";
     state.chat.messages.push({ role: "assistant", content: reply.trim(), ts: Date.now() });
   } catch (e) {
@@ -1263,20 +1580,43 @@ function deleteExpense(id) {
 // Credentials modal
 // ============================================================
 function openCredsModal() {
-  document.getElementById("cred-anthropic").value = creds.geminiKey || "";
+  document.getElementById("cred-gemini").value = creds.geminiKey || "";
   document.getElementById("cred-google").value = creds.googleClientId || "";
   updateGmailStatus();
   document.getElementById("modal-creds").classList.add("open");
 }
 function closeCredsModal() { document.getElementById("modal-creds").classList.remove("open"); }
 function saveCredsModal() {
-  const ak = document.getElementById("cred-anthropic").value.trim();
+  const ak = document.getElementById("cred-gemini").value.trim();
   const gc = document.getElementById("cred-google").value.trim();
   if (ak) creds.geminiKey = ak;
+  else if (creds.geminiKey && confirm("Dejaste la API key vacía. ¿Borrar la guardada?")) delete creds.geminiKey;
   if (gc && gc !== creds.googleClientId) { creds.googleClientId = gc; tokenClient = null; initGoogleClient(); }
   saveCreds(); updateGmailStatus(); rerenderAll();
   closeCredsModal();
   toastSync("success", "✓ Credenciales guardadas."); clearToastLater();
+}
+
+// ============================================================
+// Export
+// ============================================================
+function downloadBlob(content, filename, type) {
+  const blob = new Blob([content], { type: type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportCSV() {
+  // Separador ";" y BOM para que Excel es-CL lo abra directo
+  const rows = [["fecha", "descripcion", "categoria", "banco", "fuente", "monto", "nota"]]
+    .concat(state.expenses.map(e => [e.date, e.description, e.category || "", e.bank || "", e.source || "", e.amount, e.note || ""]));
+  const csv = "\uFEFF" + rows.map(r => r.map(v => {
+    v = String(v == null ? "" : v);
+    return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }).join(";")).join("\n");
+  downloadBlob(csv, "panel-gastos-" + new Date().toISOString().slice(0, 10) + ".csv", "text/csv;charset=utf-8");
 }
 
 // ============================================================
@@ -1289,6 +1629,7 @@ function populateBankSelect() {
   sel.innerHTML = Array.from(banks).map(b => '<option value="' + escapeHtml(b) + '"' + (b === state.bankName ? " selected" : "") + ">" + escapeHtml(b) + "</option>").join("");
 }
 function rerenderAll() {
+  recurringSet = detectRecurring();
   renderHeader(); renderSyncMeta(); renderReview(); renderDashboard();
   renderTable(); renderCategoriesEditor(); renderChat(); populateBankSelect(); updateGmailStatus();
 }
@@ -1327,13 +1668,18 @@ function wireEvents() {
   document.getElementById("btn-discard-selected").addEventListener("click", discardSelected);
   document.getElementById("btn-discard-all").addEventListener("click", discardAll);
 
-  document.getElementById("month-picker").addEventListener("change", ev => { state.ui.month = ev.target.value || ymKey(new Date()); saveState(); renderHeader(); renderDashboard(); });
+  document.getElementById("btn-theme").addEventListener("click", toggleTheme);
+  document.getElementById("month-picker").addEventListener("change", ev => { state.ui.month = ev.target.value || ymKey(new Date()); saveState(); renderHeader(); renderDashboard(); renderTable(); });
+  document.getElementById("btn-month-only").addEventListener("click", () => {
+    state.ui.filters.monthOnly = !state.ui.filters.monthOnly;
+    saveState(); renderTable();
+  });
 
   document.getElementById("f-search").addEventListener("input", ev => { state.ui.filters.search = ev.target.value; saveState(); renderTable(); });
   document.getElementById("f-category").addEventListener("change", ev => { state.ui.filters.category = ev.target.value; saveState(); renderTable(); });
   document.getElementById("f-bank").addEventListener("change", ev => { state.ui.filters.bank = ev.target.value; saveState(); renderTable(); });
   document.getElementById("f-source").addEventListener("change", ev => { state.ui.filters.source = ev.target.value; saveState(); renderTable(); });
-  document.getElementById("btn-clear-filters").addEventListener("click", () => { state.ui.filters = { search: "", category: "", bank: "", source: "" }; document.getElementById("f-search").value = ""; saveState(); renderTable(); });
+  document.getElementById("btn-clear-filters").addEventListener("click", () => { state.ui.filters = { search: "", category: "", bank: "", source: "", monthOnly: false }; document.getElementById("f-search").value = ""; saveState(); renderTable(); });
 
   Array.from(document.querySelectorAll("table.expenses th[data-sort]")).forEach(th => th.addEventListener("click", () => {
     const f = th.dataset.sort;
@@ -1365,20 +1711,22 @@ function wireEvents() {
   document.getElementById("btn-chat-clear").addEventListener("click", () => { if (!state.chat.messages.length) return; if (!confirm("¿Borrar todo el historial del chat?")) return; state.chat.messages = []; saveState(); renderChat(); });
 
   document.getElementById("btn-export").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "panel-gastos-" + new Date().toISOString().slice(0,10) + ".json";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadBlob(JSON.stringify(state, null, 2), "panel-gastos-" + new Date().toISOString().slice(0,10) + ".json", "application/json");
   });
+  document.getElementById("btn-export-csv").addEventListener("click", exportCSV);
   document.getElementById("import-file").addEventListener("change", ev => {
     const f = ev.target.files && ev.target.files[0]; if (!f) return;
     if (!confirm("Esto reemplazará todos tus datos actuales. ¿Continuar?")) { ev.target.value = ""; return; }
     const r = new FileReader();
     r.onload = () => {
-      try { const parsed = JSON.parse(String(r.result || "")); if (parsed && typeof parsed === "object") { state = Object.assign(defaultState(), parsed); saveState(); rerenderAll(); toastSync("success", "✓ Datos importados."); clearToastLater(); } }
-      catch (e) { toastSync("error", "❌ Archivo inválido."); }
+      try {
+        const parsed = JSON.parse(String(r.result || ""));
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("formato inválido");
+        state = mergeState(parsed); // sanea y aplica migraciones igual que al cargar
+        saveState(); rerenderAll();
+        toastSync("success", "✓ Datos importados: " + state.expenses.length + " gastos."); clearToastLater();
+      }
+      catch (e) { toastSync("error", "❌ Archivo inválido: no es un respaldo del panel."); }
       ev.target.value = "";
     };
     r.readAsText(f);
@@ -1417,6 +1765,13 @@ function wireEvents() {
 }
 
 (function boot() {
+  applyTheme();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!localStorage.getItem(THEME_KEY)) { applyTheme(); renderDashboard(); }
+  });
+  state.ui.month = ymKey(new Date()); // cada sesión parte mirando el mes actual
+  saveState(); // persiste las migraciones aplicadas en loadState
+  document.getElementById("f-search").value = state.ui.filters.search || "";
   wireEvents();
   rerenderAll();
   initGoogleClient();
