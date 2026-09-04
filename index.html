@@ -150,7 +150,7 @@ label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom
 .chart-empty { text-align: center; color: var(--text-soft); padding: 40px 0; font-size: 13px; }
 .tc-grid { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
 .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; overflow: hidden; }
-.filters { padding: 12px 14px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto auto; gap: 8px; align-items: end; }
+.filters { padding: 12px 14px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto auto; gap: 8px; align-items: end; }
 .filters .filter-group label { margin-bottom: 3px; font-size: 11px; }
 .table-wrap { overflow-x: auto; }
 table.expenses { width: 100%; border-collapse: collapse; }
@@ -240,7 +240,7 @@ table.expenses tr:hover { background: var(--surface-2); }
 <div class="app">
   <header class="header">
     <h1>Mi Panel de Gastos</h1>
-    <span class="chip">Chile · CLP</span>
+    <span class="chip" id="currency-chip">Chile · CLP</span>
     <span class="chip disconnected" id="gmail-chip" title="Configurar credenciales">⚙️ Configurar</span>
     <button class="btn ghost icon" id="btn-theme" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema">🌙</button>
     <div class="header-stats">
@@ -332,6 +332,7 @@ table.expenses tr:hover { background: var(--surface-2); }
     <div class="stat-card"><div class="label">Promedio diario</div><div class="value" id="stat-avg">$0</div><div class="delta flat" id="stat-avg-sub">—</div></div>
     <div class="stat-card"><div class="label">Proyección del mes</div><div class="value" id="stat-proj">$0</div><div class="delta flat" id="stat-proj-sub">—</div></div>
   </section>
+  <div class="sub hidden" id="currency-note" style="margin-top:-8px"></div>
 
   <section class="charts-grid">
     <div class="chart-card">
@@ -353,6 +354,7 @@ table.expenses tr:hover { background: var(--surface-2); }
         <div class="filter-group"><label>Categoría</label><select id="f-category"><option value="">Todas</option></select></div>
         <div class="filter-group"><label>Banco</label><select id="f-bank"><option value="">Todos</option></select></div>
         <div class="filter-group"><label>Fuente</label><select id="f-source"><option value="">Todas</option><option value="gmail">Correo</option><option value="upload">Cartola</option></select></div>
+        <div class="filter-group"><label>Moneda</label><select id="f-currency"><option value="">Todas</option></select></div>
         <button class="btn ghost" id="btn-month-only" title="Mostrar solo gastos del mes seleccionado">📅 Mes</button>
         <button class="btn ghost" id="btn-clear-filters">Limpiar</button>
       </div>
@@ -412,6 +414,11 @@ table.expenses tr:hover { background: var(--surface-2); }
             <label>Reset</label>
             <div class="row"><button class="btn danger" id="btn-reset">Borrar todos los datos</button></div>
             <div class="sub" style="margin-top:6px">Borra gastos, cola de revisión, chat, IDs procesados. No borra credenciales.</div>
+          </div>
+          <div>
+            <label>Moneda principal</label>
+            <select id="cfg-currency"></select>
+            <div class="sub" style="margin-top:6px">Moneda del dashboard y por defecto para gastos nuevos sin moneda detectada.</div>
           </div>
           <div class="full">
             <label>Categorías</label>
@@ -496,14 +503,16 @@ const DEFAULT_CATEGORIES = [
   "Supermercado","Restaurantes y delivery","Transporte","Servicios básicos","Salud",
   "Entretenimiento","Suscripciones","Vestuario","Hogar","Educación","Transferencias","Otros"
 ];
-const BANK_PRESETS = ["Banco Edwards","Banco de Chile","Santander","BCI","Itaú","BancoEstado","Falabella","Security","BICE","Otro"];
+const BANK_PRESETS = ["Global66","Banco Edwards","Banco de Chile","Santander","BCI","Itaú","BancoEstado","Falabella","Security","BICE","Otro"];
+const CURRENCY_PRESETS = ["CLP","EUR","USD","GBP","ARS","PEN","COP","MXN"];
+const ZERO_DECIMAL_CURRENCIES = new Set(["CLP","JPY","KRW","VND","ISK","HUF","PYG","CLF"]);
 
 function defaultState() {
   return {
-    version: 3, bankName: "Banco Edwards", expenses: [], categoryHints: {},
+    version: 4, bankName: "Banco Edwards", baseCurrency: "CLP", expenses: [], categoryHints: {},
     processedEmailIds: [], reviewQueue: [], categories: DEFAULT_CATEGORIES.slice(),
-    sync: { senders: ["enviodigital@bancoedwards.cl", "serviciodetransferencias@bancochile.cl"], subjectKeywords: ["Cargo", "Transferencia a Terceros"], windowDays: 30, lastSyncAt: null },
-    ui: { sort: { field: "date", dir: "desc" }, filters: { search: "", category: "", bank: "", source: "", monthOnly: false }, month: ymKey(new Date()) },
+    sync: { senders: ["enviodigital@bancoedwards.cl", "serviciodetransferencias@bancochile.cl", "no-reply@sender.global66.com"], subjectKeywords: ["Cargo", "Transferencia a Terceros", "Compra"], windowDays: 30, lastSyncAt: null },
+    ui: { sort: { field: "date", dir: "desc" }, filters: { search: "", category: "", bank: "", source: "", currency: "", monthOnly: false }, month: ymKey(new Date()) },
     chat: { messages: [] }
   };
 }
@@ -541,6 +550,18 @@ function mergeState(parsed) {
     });
     merged.reviewQueue = merged.reviewQueue.filter(e => !seen.has(dedupeKey(e)));
     merged.version = 3;
+  }
+  // Migration v4: soporte multi-moneda (Martin se cambió de banco chileno a Global66,
+  // que cobra en EUR/USD). Todo lo histórico se asume CLP; agrega Global66 a la sync
+  // sin borrar remitentes/keywords que el usuario ya haya configurado.
+  if (typeof merged.baseCurrency !== "string" || !merged.baseCurrency) merged.baseCurrency = "CLP";
+  if ((merged.version || 1) < 4) {
+    merged.expenses.forEach(e => { if (!e.currency) e.currency = "CLP"; });
+    merged.reviewQueue.forEach(e => { if (!e.currency) e.currency = "CLP"; });
+    if (merged.sync.senders.indexOf("no-reply@sender.global66.com") < 0) merged.sync.senders.push("no-reply@sender.global66.com");
+    if (merged.sync.subjectKeywords.indexOf("Compra") < 0) merged.sync.subjectKeywords.push("Compra");
+    if (merged.bankName === "Banco Edwards") merged.bankName = "Global66";
+    merged.version = 4;
   }
   return merged;
 }
@@ -608,29 +629,59 @@ function normalizeDate(s) {
   if (!isNaN(d.getTime())) return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
   return null;
 }
-function parseAmount(s) {
+// Monedas sin decimales (CLP, JPY, etc.) redondean a entero; el resto redondea a centavos
+function isZeroDecimal(cur) { return ZERO_DECIMAL_CURRENCIES.has(String(cur || "CLP").toUpperCase()); }
+function roundForCurrency(n, cur) { return isZeroDecimal(cur) ? Math.round(n) : Math.round(n * 100) / 100; }
+function normCurrency(c) { const t = String(c || "").trim().toUpperCase(); return /^[A-Z]{3}$/.test(t) ? t : state.baseCurrency; }
+function parseAmount(s, currency) {
   if (s == null) return null;
-  if (typeof s === "number") return Math.round(s);
-  let t = String(s).replace(/[$\sCLP]/gi, "").trim();
+  if (typeof s === "number") return roundForCurrency(s, currency);
+  let t = String(s).replace(/[^\d,.\-()]/g, "").trim();
   if (!t) return null;
   let sign = 1;
   if (/^-/.test(t)) { sign = -1; t = t.slice(1); }
   if (/^\(.*\)$/.test(t)) { sign = -1; t = t.slice(1, -1); }
-  if (/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(t)) return sign * Math.round(parseFloat(t.replace(/,/g, "")));
+  // Último separador seguido de 1-2 dígitos = decimales (funciona con "," o "." como marca decimal)
+  const m = t.match(/^([\d.,]*?)[.,](\d{1,2})$/);
+  if (m) {
+    const intPart = m[1].replace(/[.,]/g, "");
+    return sign * roundForCurrency(parseInt(intPart || "0", 10) + parseInt(m[2], 10) / Math.pow(10, m[2].length), currency);
+  }
+  if (/^\d{1,3}(,\d{3})+$/.test(t)) return sign * parseInt(t.replace(/,/g, ""), 10);
   if (/^\d{1,3}(\.\d{3})+$/.test(t)) return sign * parseInt(t.replace(/\./g, ""), 10);
   if (/^\d+$/.test(t)) return sign * parseInt(t, 10);
-  if (/^\d+,\d{1,2}$/.test(t)) return sign * Math.round(parseFloat(t.replace(",", ".")));
   return null;
 }
-const CLPfmt = new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 });
-function fmtCLP(n) { if (n == null || isNaN(n)) return "$0"; return CLPfmt.format(Math.round(n)); }
+const moneyFmtCache = {};
+function fmtMoney(n, currency) {
+  if (n == null || isNaN(n)) n = 0;
+  const cur = String(currency || state.baseCurrency || "CLP").toUpperCase();
+  if (!moneyFmtCache[cur]) {
+    try { moneyFmtCache[cur] = new Intl.NumberFormat("es-CL", { style: "currency", currency: cur, minimumFractionDigits: isZeroDecimal(cur) ? 0 : 2, maximumFractionDigits: isZeroDecimal(cur) ? 0 : 2 }); }
+    catch (e) { moneyFmtCache[cur] = null; }
+  }
+  if (!moneyFmtCache[cur]) return (isZeroDecimal(cur) ? "$" : cur + " ") + roundForCurrency(n, cur);
+  return moneyFmtCache[cur].format(roundForCurrency(n, cur));
+}
+function fmtCLP(n) { return fmtMoney(n, "CLP"); }
+// Formato corto para ejes de gráfico (ej. "$12k", "€1.2M")
+function fmtShort(n, currency) {
+  const cur = String(currency || state.baseCurrency || "CLP").toUpperCase();
+  const sym = cur === "EUR" ? "€" : cur === "GBP" ? "£" : cur === "USD" ? "US$" : isZeroDecimal(cur) ? "$" : cur + " ";
+  const abs = Math.abs(n);
+  if (abs >= 1000000) return sym + (n / 1000000).toFixed(1) + "M";
+  if (abs >= 1000) return sym + Math.round(n / 1000) + "k";
+  return sym + Math.round(n);
+}
 function ymKey(d) { const dd = (d instanceof Date) ? d : new Date(d); return dd.getFullYear() + "-" + String(dd.getMonth()+1).padStart(2,"0"); }
 function normDesc(s) { return String(s || "").trim().toLowerCase().replace(/\s+/g, " "); }
-// Sin banco a propósito: el LLM asigna nombres de banco inconsistentes al mismo correo
-function dedupeKey(e) { return (e.date || "") + "|" + (e.amount || 0) + "|" + normDesc(e.description); }
+// Sin banco a propósito: el LLM asigna nombres de banco inconsistentes al mismo correo. Con moneda,
+// para no confundir un gasto de $10 CLP con uno de $10 EUR el mismo día.
+function dedupeKey(e) { return (e.date || "") + "|" + (e.amount || 0) + "|" + (e.currency || "CLP") + "|" + normDesc(e.description); }
 function canonicalBank(b) {
   const t = normDesc(b);
   if (!t) return "";
+  if (t.indexOf("global") >= 0) return "Global66";
   if (t.indexOf("edwards") >= 0) return "Banco Edwards";
   if (t.indexOf("santander") >= 0) return "Santander";
   if (t.indexOf("bci") >= 0) return "BCI";
@@ -860,31 +911,45 @@ function emailExtractionPrompt(candidates, bankName) {
   let hintsJson = JSON.stringify(Object.fromEntries(hintEntries));
   if (hintsJson.length > 4000) hintsJson = hintsJson.slice(0, 4000) + '..."}';
   return [
-    "Eres un asistente experto en transacciones bancarias chilenas. Recibes correos de notificación de bancos y extraes los GASTOS (cargos / compras / pagos / transferencias salientes).",
+    "Eres un asistente experto en notificaciones de bancos y fintechs latinoamericanas (bancos chilenos y Global66). Recibes correos de notificación y extraes los GASTOS (cargos / compras / pagos / transferencias salientes).",
     "Categorías permitidas: " + JSON.stringify(state.categories) + ".",
     "Pistas aprendidas (descripción → categoría): " + hintsJson + ".",
     "",
     "TIPOS DE CORREO QUE EXTRAES:",
-    "1. CARGO / COMPRA con tarjeta: 'compra por $X con cargo a Cuenta ****YYYY en COMERCIO el DD/MM/YYYY'",
-    "   → description = COMERCIO en mayúsculas como aparece.",
+    "1. CARGO / COMPRA con tarjeta de banco chileno: 'compra por $X con cargo a Cuenta ****YYYY en COMERCIO el DD/MM/YYYY'",
+    "   → description = COMERCIO en mayúsculas como aparece. currency = \"CLP\".",
     "2. TRANSFERENCIA A TERCEROS (saliente, ES GASTO): 'Comprobante de Transferencia a terceros... Destino: Nombre Apellido... Monto: $X'",
-    "   → description = nombre del destinatario, ej: 'IGNACIO MANZANARES BANCHERO'",
+    "   → description = nombre del destinatario, ej: 'IGNACIO MANZANARES BANCHERO'. currency = \"CLP\".",
     "   → category sugerida: 'Transferencias' a menos que la pista aprendida diga otra.",
+    "3. Global66, 'Compra exitosa con tu Smart Card' o 'Compra internacional exitosa con tu Smart Card':",
+    "   Formato del cuerpo: 'Monto: $ 7.90 EUR' / 'Comercio: The Tube' / 'Fecha: DD/MM/YYYY'.",
+    "   → description = valor de Comercio tal cual aparece (respeta mayúsculas/minúsculas originales, sin forzar mayúsculas).",
+    "   → amount = el número de Monto CON decimales si los tiene (7.90 → 7.9; NUNCA redondees a 8).",
+    "   → currency = el código de 3 letras que sigue al monto (EUR, USD, CLP, GBP, etc.), tal cual aparece.",
+    "   → bank = \"Global66\".",
     "",
-    "REGLAS:",
-    "- IGNORA cartolas, estados de cuenta, abonos RECIBIDOS, 'transferencia de fondos a tu cuenta' (entrante), promociones, marketing, alertas sin monto.",
-    "- Monto chileno: punto separador de miles, sin decimales (\"$26.990\" = 26990 CLP).",
+    "EXCLUIR SIEMPRE (no son gastos, aunque el asunto contenga 'Compra' o similar):",
+    "- 'Transacción rechazada con tu Smart Card' (Global66): el cobro NO se concretó, no hubo gasto real.",
+    "- 'Recibiste dinero en Tu Cuenta Global' (Global66): es dinero que ENTRA a la cuenta, no un gasto.",
+    "- cartolas o 'Envío de estado de cuenta' (PDF adjunto, sin detalle de movimientos en el texto), abonos RECIBIDOS, 'transferencia de fondos a tu cuenta' (entrante), promociones/marketing ('Comparte la experiencia...'), recomendaciones de seguridad, alertas sin monto.",
+    "",
+    "REGLAS DE MONTO Y MONEDA:",
+    "- Si currency es CLP: punto separador de miles, SIN decimales (\"$26.990\" = amount 26990).",
+    "- Si currency es EUR/USD/GBP u otra moneda con centavos: preserva los decimales tal cual aparecen (\"$ 7.90 EUR\" = amount 7.9, currency \"EUR\"). NUNCA los conviertas a CLP ni los redondees a entero.",
+    "- Si el correo no indica moneda explícitamente, usa \"CLP\" solo si es claramente un banco chileno; si no estás seguro, deja currency null.",
+    "",
+    "OTRAS REGLAS:",
     "- Fecha DD/MM/YYYY → YYYY-MM-DD. Si solo aparece 'martes 19 de mayo de 2026' conviértela a 2026-05-19.",
-    "- description SIN prefijos ('Pago:'/'Compra:'/'Transferencia:'). En MAYÚSCULAS.",
-    "- account_last4 = los 4 dígitos tras 'Cuenta ****' si están.",
-    "- bank = banco emisor (Banco Edwards, Banco de Chile, etc.) según el contenido del correo.",
+    "- description SIN prefijos ('Pago:'/'Compra:'/'Transferencia:').",
+    "- account_last4 = los 4 dígitos tras 'Cuenta ****' o 'Tarjeta Virtual: **** **** ****' si están.",
+    "- bank = banco/fintech emisor (Banco Edwards, Banco de Chile, Global66, etc.) según el contenido del correo.",
     "- category: si NO estás seguro, déjala null.",
     "",
     "CORREOS (subject + body):",
     JSON.stringify(candidates),
     "",
     'Devuelve SOLO array JSON, sin markdown:',
-    '[{"email_id":"...","date":"YYYY-MM-DD","amount":12345,"description":"...","account_last4":"...","bank":"...","category":null}]'
+    '[{"email_id":"...","date":"YYYY-MM-DD","amount":12345,"currency":"CLP","description":"...","account_last4":"...","bank":"...","category":null}]'
   ].join("\n");
 }
 
@@ -893,13 +958,15 @@ function statementParsePrompt(text, bankName) {
   let hintsJson = JSON.stringify(Object.fromEntries(hintEntries));
   if (hintsJson.length > 4000) hintsJson = hintsJson.slice(0, 4000) + '..."}';
   return [
-    'Eres experto en cartolas bancarias chilenas. Extrae los GASTOS (cargos, compras, pagos — NUNCA abonos).',
-    'Banco: "' + bankName + '". Categorías permitidas: ' + JSON.stringify(state.categories) + '. Pistas: ' + hintsJson + '.',
+    'Eres experto en cartolas y estados de cuenta bancarios/fintech. Extrae los GASTOS (cargos, compras, pagos — NUNCA abonos).',
+    'Banco/fuente: "' + bankName + '". Moneda por defecto si una fila no indica otra: "' + state.baseCurrency + '". Categorías permitidas: ' + JSON.stringify(state.categories) + '. Pistas: ' + hintsJson + '.',
     "",
     "REGLAS:",
     '- Si hay "Cargos" y "Abonos", solo filas con Cargos > 0.',
     '- IGNORA filas de header/metadata (saldo, RUT, totales).',
-    "- Formato de monto: \"2,811.00\" → 2811; \"$26.990\" o \"26.990\" → 26990.",
+    '- Detecta la moneda de cada fila si aparece un símbolo o código (CLP, EUR, USD, GBP...); si no aparece, usa la moneda por defecto indicada arriba.',
+    "- Si la moneda es CLP: monto sin decimales (\"$26.990\" o \"26.990\" → 26990).",
+    "- Si la moneda tiene centavos (EUR/USD/GBP/etc.): preserva los decimales (\"2,811.00\" → 2811.00, \"7,90\" → 7.9). NUNCA redondees a entero.",
     "- Fecha DD/MM/YYYY → YYYY-MM-DD.",
     '- description SIN prefijos. category null si dudoso.',
     "",
@@ -907,7 +974,7 @@ function statementParsePrompt(text, bankName) {
     '"""' + text.slice(0, 30000) + '"""',
     "",
     "Devuelve SOLO array JSON, sin markdown:",
-    '[{"date":"YYYY-MM-DD","amount":12345,"description":"JUMBO BILBAO","bank":"' + bankName + '","category":"Supermercado"}]'
+    '[{"date":"YYYY-MM-DD","amount":12345,"currency":"' + state.baseCurrency + '","description":"JUMBO BILBAO","bank":"' + bankName + '","category":"Supermercado"}]'
   ].join("\n");
 }
 
@@ -1050,9 +1117,11 @@ async function runSync() {
     let accepted = 0, queued = 0, dup = 0, skipped = 0;
     const existing = new Set(state.expenses.map(dedupeKey).concat(state.reviewQueue.map(dedupeKey)));
     out.forEach(item => {
+      const cur = normCurrency(item.currency);
       const norm = {
         id: uid(), date: normalizeDate(item.date),
-        amount: typeof item.amount === "number" ? Math.round(item.amount) : parseAmount(item.amount),
+        amount: typeof item.amount === "number" ? roundForCurrency(item.amount, cur) : parseAmount(item.amount, cur),
+        currency: cur,
         description: String(item.description || "").trim(), note: "", category: item.category || null,
         bank: canonicalBank(item.bank) || state.bankName, account: item.account_last4 ? "****" + item.account_last4 : "",
         source: "gmail", emailId: item.email_id || null, createdAt: new Date().toISOString()
@@ -1109,9 +1178,11 @@ async function processUpload() {
     let accepted = 0, queued = 0, dup = 0, skipped = 0;
     const existing = new Set(state.expenses.map(dedupeKey).concat(state.reviewQueue.map(dedupeKey)));
     out.forEach(item => {
+      const cur = normCurrency(item.currency);
       const norm = {
         id: uid(), date: normalizeDate(item.date),
-        amount: typeof item.amount === "number" ? Math.round(item.amount) : parseAmount(item.amount),
+        amount: typeof item.amount === "number" ? roundForCurrency(item.amount, cur) : parseAmount(item.amount, cur),
+        currency: cur,
         description: String(item.description || "").trim(), note: "", category: item.category || null,
         bank: canonicalBank(item.bank) || bank, account: item.account_last4 ? "****" + item.account_last4 : "",
         source: "upload", emailId: null, createdAt: new Date().toISOString()
@@ -1215,11 +1286,20 @@ async function autoCategorize() {
 // ============================================================
 // Rendering
 // ============================================================
-function totalForMonth(ym) { return state.expenses.filter(e => e.date && e.date.startsWith(ym)).reduce((a,b) => a + (b.amount||0), 0); }
+// Escopado a una sola moneda a propósito: sumar CLP + EUR directamente daría un número sin sentido
+function totalForMonth(ym, currency) {
+  const cur = currency || state.baseCurrency;
+  return state.expenses.filter(e => e.date && e.date.startsWith(ym) && (e.currency || "CLP") === cur).reduce((a,b) => a + (b.amount||0), 0);
+}
+function otherCurrencyCountForMonth(ym) {
+  return state.expenses.filter(e => e.date && e.date.startsWith(ym) && (e.currency || "CLP") !== state.baseCurrency).length;
+}
 function renderHeader() {
   const ym = state.ui.month || ymKey(new Date());
-  document.getElementById("hs-total").textContent = fmtCLP(totalForMonth(ym));
+  document.getElementById("hs-total").textContent = fmtMoney(totalForMonth(ym), state.baseCurrency);
   document.getElementById("hs-count").textContent = state.expenses.length;
+  const chip = document.getElementById("currency-chip");
+  if (chip) chip.textContent = "Chile · " + state.baseCurrency;
 }
 function renderSyncMeta() {
   const last = state.sync.lastSyncAt;
@@ -1236,12 +1316,12 @@ function renderDashboard() {
   const ym = state.ui.month || ymKey(new Date());
   document.getElementById("month-picker").value = ym;
   const tot = totalForMonth(ym);
-  document.getElementById("stat-total").textContent = fmtCLP(tot);
+  document.getElementById("stat-total").textContent = fmtMoney(tot, state.baseCurrency);
   const [y, m] = ym.split("-").map(Number);
   const prev = new Date(y, m-2, 1);
   const prevYm = ymKey(prev);
   const prevTot = totalForMonth(prevYm);
-  document.getElementById("stat-prev").textContent = fmtCLP(prevTot);
+  document.getElementById("stat-prev").textContent = fmtMoney(prevTot, state.baseCurrency);
   document.getElementById("stat-prev-sub").textContent = prevYm;
   const deltaEl = document.getElementById("stat-delta");
   if (prevTot > 0) {
@@ -1253,15 +1333,21 @@ function renderDashboard() {
   const now = new Date(); const currentYm = ymKey(now);
   const daysInMonth = new Date(y, m, 0).getDate();
   const dayCount = ym === currentYm ? Math.max(1, now.getDate()) : daysInMonth;
-  document.getElementById("stat-avg").textContent = fmtCLP(tot / dayCount);
+  document.getElementById("stat-avg").textContent = fmtMoney(tot / dayCount, state.baseCurrency);
   document.getElementById("stat-avg-sub").textContent = "sobre " + dayCount + " días";
   const projEl = document.getElementById("stat-proj"), projSub = document.getElementById("stat-proj-sub");
   if (ym === currentYm && now.getDate() < daysInMonth) {
-    projEl.textContent = fmtCLP((tot / dayCount) * daysInMonth);
+    projEl.textContent = fmtMoney((tot / dayCount) * daysInMonth, state.baseCurrency);
     projSub.textContent = "estimado a fin de mes, a este ritmo";
   } else {
-    projEl.textContent = fmtCLP(tot);
+    projEl.textContent = fmtMoney(tot, state.baseCurrency);
     projSub.textContent = "mes cerrado";
+  }
+  const otherNote = document.getElementById("currency-note");
+  if (otherNote) {
+    const n = otherCurrencyCountForMonth(ym);
+    if (n > 0) { otherNote.textContent = "El dashboard solo suma gastos en " + state.baseCurrency + ". Hay " + n + " gasto" + (n === 1 ? "" : "s") + " este mes en otra moneda — revísalos en la tabla o cambia tu moneda principal en ⚙️ Configuración."; otherNote.classList.remove("hidden"); }
+    else otherNote.classList.add("hidden");
   }
   if (typeof Chart !== "undefined") Chart.defaults.color = cssVar("--text-muted");
   renderCategoryChart(ym);
@@ -1272,7 +1358,7 @@ function renderCategoryChart(ym) {
   const ctx = document.getElementById("cat-chart");
   const emptyEl = document.getElementById("chart-empty");
   const byCat = {};
-  state.expenses.forEach(e => { if (e.date && e.date.startsWith(ym)) { const c = e.category || "Sin categoría"; byCat[c] = (byCat[c] || 0) + (e.amount || 0); } });
+  state.expenses.forEach(e => { if (e.date && e.date.startsWith(ym) && (e.currency || "CLP") === state.baseCurrency) { const c = e.category || "Sin categoría"; byCat[c] = (byCat[c] || 0) + (e.amount || 0); } });
   const labels = Object.keys(byCat).sort((a,b) => byCat[b] - byCat[a]);
   const data = labels.map(k => byCat[k]);
   if (!labels.length) { if (catChart) { catChart.destroy(); catChart = null; } ctx.style.display = "none"; emptyEl.classList.remove("hidden"); return; }
@@ -1284,7 +1370,7 @@ function renderCategoryChart(ym) {
   catChart = new Chart(ctx, {
     type: "doughnut",
     data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: cssVar("--surface") }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: "60%", plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 }, padding: 8 } }, tooltip: { callbacks: { label: ctx => ctx.label + ": " + fmtCLP(ctx.parsed) } } } }
+    options: { responsive: true, maintainAspectRatio: false, cutout: "60%", plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 }, padding: 8 } }, tooltip: { callbacks: { label: ctx => ctx.label + ": " + fmtMoney(ctx.parsed, state.baseCurrency) } } } }
   });
 }
 function renderTrendChart(ym) {
@@ -1309,9 +1395,9 @@ function renderTrendChart(ym) {
         saveState(); renderHeader(); renderDashboard(); renderTable();
       },
       onHover: (ev, els) => { ev.native.target.style.cursor = els.length ? "pointer" : "default"; },
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmtCLP(c.parsed.y) } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmtMoney(c.parsed.y, state.baseCurrency) } } },
       scales: {
-        y: { ticks: { callback: v => v >= 1000000 ? "$" + (v / 1000000).toFixed(1) + "M" : "$" + Math.round(v / 1000) + "k" }, grid: { color: cssVar("--border") } },
+        y: { ticks: { callback: v => fmtShort(v, state.baseCurrency) }, grid: { color: cssVar("--border") } },
         x: { grid: { display: false } }
       }
     }
@@ -1340,31 +1426,31 @@ function detectRecurring() {
 function renderInsights(ym) {
   const box = document.getElementById("insights");
   if (!box) return;
-  const list = state.expenses.filter(e => e.date && e.date.startsWith(ym));
+  const list = state.expenses.filter(e => e.date && e.date.startsWith(ym) && (e.currency || "CLP") === state.baseCurrency);
   const items = [];
   if (list.length) {
     const byDesc = {};
     list.forEach(e => { const k = normDesc(e.description); const o = byDesc[k] = byDesc[k] || { name: e.description, sum: 0, n: 0 }; o.sum += e.amount || 0; o.n++; });
     const top = Object.values(byDesc).sort((a, b) => b.sum - a.sum)[0];
-    if (top) items.push({ ico: "🏪", label: "Top comercio del mes", value: top.name, sub: fmtCLP(top.sum) + " en " + top.n + (top.n === 1 ? " movimiento" : " movimientos") });
+    if (top) items.push({ ico: "🏪", label: "Top comercio del mes", value: top.name, sub: fmtMoney(top.sum, state.baseCurrency) + " en " + top.n + (top.n === 1 ? " movimiento" : " movimientos") });
     const max = list.slice().sort((a, b) => (b.amount || 0) - (a.amount || 0))[0];
-    if (max) items.push({ ico: "💥", label: "Mayor gasto", value: fmtCLP(max.amount), sub: max.description + " · " + max.date });
+    if (max) items.push({ ico: "💥", label: "Mayor gasto", value: fmtMoney(max.amount, state.baseCurrency), sub: max.description + " · " + max.date });
     const p = ym.split("-").map(Number);
     const prevYm = ymKey(new Date(p[0], p[1] - 2, 1));
     const byCat = {}, byCatPrev = {};
     state.expenses.forEach(e => {
-      if (!e.date) return;
+      if (!e.date || (e.currency || "CLP") !== state.baseCurrency) return;
       const c = e.category || "Sin categoría";
       if (e.date.startsWith(ym)) byCat[c] = (byCat[c] || 0) + (e.amount || 0);
       else if (e.date.startsWith(prevYm)) byCatPrev[c] = (byCatPrev[c] || 0) + (e.amount || 0);
     });
     let riser = null;
     Object.keys(byCat).forEach(c => { const d = byCat[c] - (byCatPrev[c] || 0); if (d > 0 && (!riser || d > riser.d)) riser = { c: c, d: d }; });
-    if (riser && Object.keys(byCatPrev).length) items.push({ ico: "📈", label: "Categoría que más subió", value: riser.c, sub: "+" + fmtCLP(riser.d) + " vs mes anterior" });
+    if (riser && Object.keys(byCatPrev).length) items.push({ ico: "📈", label: "Categoría que más subió", value: riser.c, sub: "+" + fmtMoney(riser.d, state.baseCurrency) + " vs mes anterior" });
     const recs = list.filter(e => recurringSet.has(normDesc(e.description)));
     if (recs.length) {
       const uniq = new Set(recs.map(e => normDesc(e.description)));
-      items.push({ ico: "🔁", label: "Gastos recurrentes", value: fmtCLP(recs.reduce((a, b) => a + (b.amount || 0), 0)), sub: uniq.size + (uniq.size === 1 ? " pago fijo detectado" : " pagos fijos detectados") + " este mes" });
+      items.push({ ico: "🔁", label: "Gastos recurrentes", value: fmtMoney(recs.reduce((a, b) => a + (b.amount || 0), 0), state.baseCurrency), sub: uniq.size + (uniq.size === 1 ? " pago fijo detectado" : " pagos fijos detectados") + " este mes" });
     }
   }
   if (!items.length) { box.classList.add("hidden"); box.innerHTML = ""; return; }
@@ -1380,7 +1466,7 @@ function renderReview() {
   list.innerHTML = state.reviewQueue.map(e => {
     const opts = ['<option value="">— sin categoría —</option>'].concat(state.categories.map(c => '<option value="' + escapeHtml(c) + '"' + (e.category === c ? " selected" : "") + ">" + escapeHtml(c) + "</option>")).join("");
     const checked = selectedReview.has(e.id) ? "checked" : "";
-    return '<div class="review-item" data-id="' + e.id + '"><input type="checkbox" class="ri-check" ' + checked + '><span class="ri-date">' + escapeHtml(e.date) + '</span><span class="ri-desc">' + escapeHtml(e.description) + '</span><select class="ri-cat">' + opts + '</select><span class="ri-amt">' + fmtCLP(e.amount) + '</span><button class="btn primary ri-accept" ' + (e.category ? "" : 'disabled title="Asigna una categoría"') + '>✓</button><button class="btn danger ri-discard">✕</button></div>';
+    return '<div class="review-item" data-id="' + e.id + '"><input type="checkbox" class="ri-check" ' + checked + '><span class="ri-date">' + escapeHtml(e.date) + '</span><span class="ri-desc">' + escapeHtml(e.description) + '</span><select class="ri-cat">' + opts + '</select><span class="ri-amt">' + fmtMoney(e.amount, e.currency) + '</span><button class="btn primary ri-accept" ' + (e.category ? "" : 'disabled title="Asigna una categoría"') + '>✓</button><button class="btn danger ri-discard">✕</button></div>';
   }).join("");
   Array.from(list.querySelectorAll(".review-item")).forEach(el => {
     const id = el.dataset.id;
@@ -1406,6 +1492,7 @@ function applyFilters(list) {
     if (f.category && e.category !== f.category) return false;
     if (f.bank && e.bank !== f.bank) return false;
     if (f.source && e.source !== f.source) return false;
+    if (f.currency && (e.currency || "CLP") !== f.currency) return false;
     if (q) { const hay = ((e.description||"") + " " + (e.note||"") + " " + (e.category||"")).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
     return true;
   });
@@ -1420,12 +1507,13 @@ function sortList(list) {
   });
 }
 function renderTable() {
-  const catSel = document.getElementById("f-category"); const bankSel = document.getElementById("f-bank");
-  const cats = new Set(); const banks = new Set();
-  state.expenses.forEach(e => { if (e.category) cats.add(e.category); if (e.bank) banks.add(e.bank); });
+  const catSel = document.getElementById("f-category"); const bankSel = document.getElementById("f-bank"); const currSel = document.getElementById("f-currency");
+  const cats = new Set(); const banks = new Set(); const currencies = new Set();
+  state.expenses.forEach(e => { if (e.category) cats.add(e.category); if (e.bank) banks.add(e.bank); currencies.add(e.currency || "CLP"); });
   state.categories.forEach(c => cats.add(c));
   catSel.innerHTML = '<option value="">Todas</option>' + Array.from(cats).sort().map(c => '<option value="' + escapeHtml(c) + '"' + (state.ui.filters.category === c ? " selected" : "") + ">" + escapeHtml(c) + "</option>").join("");
   bankSel.innerHTML = '<option value="">Todos</option>' + Array.from(banks).sort().map(b => '<option value="' + escapeHtml(b) + '"' + (state.ui.filters.bank === b ? " selected" : "") + ">" + escapeHtml(b) + "</option>").join("");
+  if (currSel) currSel.innerHTML = '<option value="">Todas</option>' + Array.from(currencies).sort().map(c => '<option value="' + escapeHtml(c) + '"' + (state.ui.filters.currency === c ? " selected" : "") + ">" + escapeHtml(c) + "</option>").join("");
   ["date","description","category","bank","source","amount"].forEach(f => {
     const el = document.getElementById("si-" + f);
     if (el) el.textContent = state.ui.sort.field === f ? (state.ui.sort.dir === "asc" ? "▲" : "▼") : "";
@@ -1448,12 +1536,15 @@ function renderTable() {
       const noteRow = e.note ? '<div class="row-note">' + escapeHtml(e.note) + '</div>' : '';
       const acct = e.account ? '<div class="sub">' + escapeHtml(e.account) + '</div>' : '';
       const srcLabel = e.source === "gmail" ? "Correo" : (e.source === "upload" ? "Cartola" : "—");
-      return '<tr data-id="' + e.id + '"><td>' + escapeHtml(e.date) + '</td><td><div>' + escapeHtml(e.description) + recur + '</div>' + acct + noteRow + '</td><td>' + cat + '</td><td><span class="tag">' + escapeHtml(e.bank || "") + '</span></td><td><span class="tag">' + srcLabel + '</span></td><td class="amt">' + fmtCLP(e.amount) + '</td><td><div class="row-actions"><button data-id="' + e.id + '" data-action="note" title="Editar nota">✎</button><button data-id="' + e.id + '" data-action="delete" title="Borrar">🗑</button></div></td></tr>';
+      return '<tr data-id="' + e.id + '"><td>' + escapeHtml(e.date) + '</td><td><div>' + escapeHtml(e.description) + recur + '</div>' + acct + noteRow + '</td><td>' + cat + '</td><td><span class="tag">' + escapeHtml(e.bank || "") + '</span></td><td><span class="tag">' + srcLabel + '</span></td><td class="amt">' + fmtMoney(e.amount, e.currency) + '</td><td><div class="row-actions"><button data-id="' + e.id + '" data-action="note" title="Editar nota">✎</button><button data-id="' + e.id + '" data-action="delete" title="Borrar">🗑</button></div></td></tr>';
     }).join("");
   }
-  const total = filtered.reduce((a,b) => a + (b.amount||0), 0);
+  // Nunca sumar montos de distinta moneda entre sí: total desglosado por moneda
+  const totalsByCur = {};
+  filtered.forEach(e => { const c = e.currency || "CLP"; totalsByCur[c] = (totalsByCur[c] || 0) + (e.amount || 0); });
+  const totalStr = Object.keys(totalsByCur).sort().map(c => fmtMoney(totalsByCur[c], c)).join(" + ");
   document.getElementById("table-info").textContent = filtered.length + " gasto" + (filtered.length === 1 ? "" : "s");
-  document.getElementById("table-total").textContent = "Total filtrado: " + fmtCLP(total);
+  document.getElementById("table-total").textContent = "Total filtrado: " + (totalStr || fmtMoney(0, state.baseCurrency));
 }
 function renderCategoriesEditor() {
   const ed = document.getElementById("cat-editor");
@@ -1490,22 +1581,23 @@ function chatSystemPrompt(question) {
   const ym = state.ui.month || ymKey(new Date());
   const today = new Date().toISOString().slice(0,10);
   // Formato compacto para gastar ~60% menos tokens que el objeto completo
-  const exp = state.expenses.slice(-800).map(e => ({ f: e.date, d: e.description, m: e.amount, c: e.category || null, b: e.bank || null, n: e.note || undefined }));
+  const exp = state.expenses.slice(-800).map(e => ({ f: e.date, d: e.description, m: e.amount, cur: e.currency || "CLP", c: e.category || null, b: e.bank || null, n: e.note || undefined }));
   const history = (state.chat.messages || []).slice(-10).map(m => (m.role === "user" ? "Usuario" : "Asistente") + ": " + m.content).join("\n");
   return [
-    "Eres un asistente financiero personal. El usuario es chileno y todos los montos están en CLP.", "",
-    "CONTEXTO:", "- Hoy: " + today, "- Mes seleccionado: " + ym, "- Banco principal: " + state.bankName,
+    "Eres un asistente financiero personal. El usuario puede tener gastos en distintas monedas — revisa el campo \"cur\" de cada gasto, NO asumas que todo está en la misma moneda.", "",
+    "CONTEXTO:", "- Hoy: " + today, "- Mes seleccionado: " + ym, "- Moneda principal: " + state.baseCurrency, "- Banco principal: " + state.bankName,
     "- Categorías disponibles: " + JSON.stringify(state.categories), "- Total de gastos: " + state.expenses.length, "",
     "REGLAS DE RESPUESTA:",
     "- Responde SIEMPRE en español, breve y directo. Sin saludos ni preámbulos.",
-    "- Formato de monto: \"$12.345\" (punto como separador de miles).",
+    "- Formato de monto: usa el código de la moneda del gasto, ej. \"$12.345 CLP\" o \"€7,90 EUR\".",
+    "- NUNCA sumes montos de monedas distintas entre sí. Si el usuario pide un total y hay varias monedas mezcladas, entrega un subtotal por cada moneda por separado.",
     "- Para buscar un comercio (ej: \"Uber\"), usa substring case-insensitive sobre el campo \"d\".",
     "- \"Este mes\" = year-month " + ym + ". \"Mes pasado\" = el anterior.",
     "- Si no hay datos relevantes, dilo: no inventes.",
-    "- Lista movimientos individuales con guión (fecha, descripción, monto) cuando tenga sentido.",
-    "- Muestra el total al final cuando agregues sumas.",
+    "- Lista movimientos individuales con guión (fecha, descripción, monto con su moneda) cuando tenga sentido.",
+    "- Muestra el/los total(es) al final cuando agregues sumas.",
     "- Puedes usar **negrita** para destacar montos o conclusiones.", "",
-    "DATOS (JSON; campos: f=fecha, d=descripción/comercio, m=monto CLP, c=categoría, b=banco, n=nota):", JSON.stringify(exp), "",
+    "DATOS (JSON; campos: f=fecha, d=descripción/comercio, m=monto, cur=moneda ISO, c=categoría, b=banco, n=nota):", JSON.stringify(exp), "",
     "CONVERSACIÓN PREVIA:", history || "(ninguna)", "",
     "PREGUNTA DEL USUARIO:", question, "",
     "Responde directamente, sin saludos:"
@@ -1541,7 +1633,7 @@ function openCatModal(id) {
   const e = state.expenses.find(x => x.id === id) || state.reviewQueue.find(x => x.id === id);
   if (!e) return;
   editingExpenseId = id;
-  document.getElementById("modal-cat-desc").textContent = e.description + " · " + fmtCLP(e.amount);
+  document.getElementById("modal-cat-desc").textContent = e.description + " · " + fmtMoney(e.amount, e.currency);
   const sel = document.getElementById("modal-cat-select");
   sel.innerHTML = '<option value="">— sin categoría —</option>' + state.categories.map(c => '<option value="' + escapeHtml(c) + '"' + (e.category === c ? " selected" : "") + ">" + escapeHtml(c) + "</option>").join("");
   document.getElementById("modal-cat").classList.add("open");
@@ -1557,7 +1649,7 @@ function closeCatModal() { editingExpenseId = null; document.getElementById("mod
 function openNoteModal(id) {
   const e = state.expenses.find(x => x.id === id); if (!e) return;
   noteEditingId = id;
-  document.getElementById("modal-note-desc").textContent = e.description + " · " + fmtCLP(e.amount);
+  document.getElementById("modal-note-desc").textContent = e.description + " · " + fmtMoney(e.amount, e.currency);
   document.getElementById("modal-note-text").value = e.note || "";
   document.getElementById("modal-note").classList.add("open");
   setTimeout(() => document.getElementById("modal-note-text").focus(), 30);
@@ -1571,7 +1663,7 @@ function clearNoteModal() { const e = state.expenses.find(x => x.id === noteEdit
 function closeNoteModal() { noteEditingId = null; document.getElementById("modal-note").classList.remove("open"); }
 function deleteExpense(id) {
   const e = state.expenses.find(x => x.id === id); if (!e) return;
-  if (!confirm("¿Borrar este gasto?\n" + e.description + " · " + fmtCLP(e.amount))) return;
+  if (!confirm("¿Borrar este gasto?\n" + e.description + " · " + fmtMoney(e.amount, e.currency))) return;
   state.expenses = state.expenses.filter(x => x.id !== id);
   saveState(); rerenderAll();
 }
@@ -1610,8 +1702,8 @@ function downloadBlob(content, filename, type) {
 }
 function exportCSV() {
   // Separador ";" y BOM para que Excel es-CL lo abra directo
-  const rows = [["fecha", "descripcion", "categoria", "banco", "fuente", "monto", "nota"]]
-    .concat(state.expenses.map(e => [e.date, e.description, e.category || "", e.bank || "", e.source || "", e.amount, e.note || ""]));
+  const rows = [["fecha", "descripcion", "categoria", "banco", "fuente", "moneda", "monto", "nota"]]
+    .concat(state.expenses.map(e => [e.date, e.description, e.category || "", e.bank || "", e.source || "", e.currency || "CLP", e.amount, e.note || ""]));
   const csv = "\uFEFF" + rows.map(r => r.map(v => {
     v = String(v == null ? "" : v);
     return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
@@ -1628,10 +1720,16 @@ function populateBankSelect() {
   state.expenses.forEach(e => { if (e.bank) banks.add(e.bank); });
   sel.innerHTML = Array.from(banks).map(b => '<option value="' + escapeHtml(b) + '"' + (b === state.bankName ? " selected" : "") + ">" + escapeHtml(b) + "</option>").join("");
 }
+function populateCurrencySelect() {
+  const sel = document.getElementById("cfg-currency"); if (!sel) return;
+  const set = new Set(CURRENCY_PRESETS); set.add(state.baseCurrency);
+  state.expenses.forEach(e => { if (e.currency) set.add(e.currency); });
+  sel.innerHTML = Array.from(set).sort().map(c => '<option value="' + c + '"' + (c === state.baseCurrency ? " selected" : "") + ">" + c + "</option>").join("");
+}
 function rerenderAll() {
   recurringSet = detectRecurring();
   renderHeader(); renderSyncMeta(); renderReview(); renderDashboard();
-  renderTable(); renderCategoriesEditor(); renderChat(); populateBankSelect(); updateGmailStatus();
+  renderTable(); renderCategoriesEditor(); renderChat(); populateBankSelect(); populateCurrencySelect(); updateGmailStatus();
 }
 
 function wireEvents() {
@@ -1679,7 +1777,8 @@ function wireEvents() {
   document.getElementById("f-category").addEventListener("change", ev => { state.ui.filters.category = ev.target.value; saveState(); renderTable(); });
   document.getElementById("f-bank").addEventListener("change", ev => { state.ui.filters.bank = ev.target.value; saveState(); renderTable(); });
   document.getElementById("f-source").addEventListener("change", ev => { state.ui.filters.source = ev.target.value; saveState(); renderTable(); });
-  document.getElementById("btn-clear-filters").addEventListener("click", () => { state.ui.filters = { search: "", category: "", bank: "", source: "", monthOnly: false }; document.getElementById("f-search").value = ""; saveState(); renderTable(); });
+  document.getElementById("f-currency").addEventListener("change", ev => { state.ui.filters.currency = ev.target.value; saveState(); renderTable(); });
+  document.getElementById("btn-clear-filters").addEventListener("click", () => { state.ui.filters = { search: "", category: "", bank: "", source: "", currency: "", monthOnly: false }; document.getElementById("f-search").value = ""; saveState(); renderTable(); });
 
   Array.from(document.querySelectorAll("table.expenses th[data-sort]")).forEach(th => th.addEventListener("click", () => {
     const f = th.dataset.sort;
@@ -1744,6 +1843,10 @@ function wireEvents() {
     saveState(); renderCategoriesEditor(); renderTable(); renderReview();
   });
   document.getElementById("cat-new").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); document.getElementById("btn-cat-add").click(); } });
+  document.getElementById("cfg-currency").addEventListener("change", ev => {
+    state.baseCurrency = ev.target.value || "CLP";
+    saveState(); renderHeader(); renderDashboard(); renderTable();
+  });
 
   // Credentials
   document.getElementById("gmail-chip").addEventListener("click", openCredsModal);
