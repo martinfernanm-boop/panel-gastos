@@ -341,7 +341,7 @@ table.expenses tr:hover { background: var(--surface-2); }
     </div>
     <div class="chart-card">
       <div class="chart-head"><h3>Tendencia últimos 6 meses</h3><span class="sub">click en una barra para ver ese mes</span></div>
-      <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+      <div class="chart-wrap"><canvas id="trend-chart"></canvas><div id="trend-empty" class="chart-empty hidden">Sin gastos en esta moneda en los últimos 6 meses.</div></div>
     </div>
   </section>
 
@@ -1375,11 +1375,22 @@ function renderCategoryChart(ym) {
 }
 function renderTrendChart(ym) {
   const ctx = document.getElementById("trend-chart");
+  const emptyEl = document.getElementById("trend-empty");
   if (!ctx || typeof Chart === "undefined") return;
   const [y, m] = ym.split("-").map(Number);
   const months = [];
   for (let i = 5; i >= 0; i--) months.push(ymKey(new Date(y, m - 1 - i, 1)));
-  const totals = months.map(totalForMonth);
+  const totals = months.map(k => totalForMonth(k));
+  // Si no hay ni un gasto en la moneda principal en los últimos 6 meses, Chart.js dibuja
+  // barras en 0 con una escala 0-1 que se ve prácticamente en blanco. Mostramos un mensaje.
+  if (totals.every(t => !t)) {
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+    ctx.style.display = "none";
+    if (emptyEl) { emptyEl.textContent = "Sin gastos en " + state.baseCurrency + " en los últimos 6 meses."; emptyEl.classList.remove("hidden"); }
+    return;
+  }
+  ctx.style.display = "";
+  if (emptyEl) emptyEl.classList.add("hidden");
   const labels = months.map(k => { const p = k.split("-").map(Number); return MONTHS_ES[p[1] - 1] + " " + String(p[0]).slice(2); });
   const primary = cssVar("--primary");
   const colors = months.map(k => k === ym ? primary : primary + "55");
